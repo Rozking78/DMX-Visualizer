@@ -1,0 +1,1353 @@
+# Gobo Generation Prompts
+# Use these with DALL-E, Midjourney, or Stable Diffusion
+
+## Gobo 51: leaves_sparse
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Scattered realistic tree leaves silhouettes, sparse arrangement, oak and maple leaves floating randomly, natural dappled light pattern
+
+## Gobo 52: leaves_dense
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Dense overlapping tree leaves pattern, heavy foliage coverage, creating complex shadow breakup, forest canopy effect
+
+## Gobo 53: branches
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Bare tree branches silhouette, winter trees without leaves, organic branching pattern, realistic wood texture
+
+## Gobo 54: branches_dense
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Dense network of intertwined bare tree branches, complex organic pattern, forest of bare trees
+
+## Gobo 55: cloud_soft
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Soft fluffy cumulus clouds, gentle billowing edges, dreamy sky pattern with soft gradients
+
+## Gobo 56: cloud_heavy
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Heavy storm clouds, dramatic cloud formations, dark threatening sky pattern, high contrast
+
+## Gobo 57: water_ripple
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Concentric water ripples expanding outward from center, pond ripple effect, circular waves
+
+## Gobo 58: water_caustics
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Underwater light caustics pattern, swimming pool light refraction, organic wavy light patterns
+
+## Gobo 59: dappled_light
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Sunlight filtering through tree canopy, random spots of light, forest floor dappled pattern
+
+## Gobo 60: forest_floor
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Forest undergrowth pattern, ferns leaves and forest debris, woodland floor texture
+
+## Gobo 61: bamboo
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Vertical bamboo stalks pattern, Asian bamboo forest silhouette, parallel vertical stems with nodes
+
+## Gobo 62: fern
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Delicate fern fronds pattern, feathery fern leaves, botanical illustration style
+
+## Gobo 63: oak_leaves
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Oak leaf silhouettes with characteristic lobed shape, scattered oak leaves pattern
+
+## Gobo 64: maple_leaves
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Maple leaf silhouettes with pointed lobes, autumn maple leaves pattern, Canadian maple style
+
+## Gobo 65: pine_needles
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Pine needle clusters pattern, conifer branches, fine needle texture, evergreen pattern
+
+## Gobo 66: ivy
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Trailing ivy vine pattern, ivy leaves climbing, English ivy silhouette
+
+## Gobo 67: grass
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Tall grass blades pattern, prairie grass silhouette, thin vertical organic lines
+
+## Gobo 68: raindrops
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Rain droplets pattern, water drops on glass, scattered teardrop shapes
+
+## Gobo 69: snowflakes
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Crystalline snowflake patterns, various snowflake designs, winter frost pattern
+
+## Gobo 70: ice_crystals
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Angular ice crystal formations, frozen frost patterns, sharp crystalline shards
+
+## Gobo 71: triangle_grid
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Regular tessellated triangle grid pattern, geometric triangular mesh, mathematical precision
+
+## Gobo 72: triangle_scatter
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Randomly scattered triangles of various sizes, chaotic triangle pattern, confetti triangles
+
+## Gobo 73: circle_grid
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Regular array of circles, polka dot matrix pattern, evenly spaced circular holes
+
+## Gobo 74: circle_scatter
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Randomly scattered circles and bubbles, various sizes, organic bubble pattern
+
+## Gobo 75: square_grid
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Regular square grid pattern, window pane style, geometric squares mesh
+
+## Gobo 76: square_scatter
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Randomly scattered squares, confetti squares, chaotic geometric pattern
+
+## Gobo 77: hexagon_grid
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Honeycomb hexagonal pattern, bee hive tessellation, hexagonal mesh
+
+## Gobo 78: hexagon_scatter
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Scattered hexagons of various sizes, random hex pattern
+
+## Gobo 79: diamond_grid
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Diamond lattice pattern, argyle style diagonal grid, rhombus tessellation
+
+## Gobo 80: diamond_scatter
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Scattered diamond shapes, random gem pattern, chaotic diamonds
+
+## Gobo 81: confetti
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Party confetti pattern, mixed shapes scattered randomly, celebration pattern
+
+## Gobo 82: mod_confetti
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: 1960s mod style confetti, retro geometric shapes, groovy pattern
+
+## Gobo 83: polka_dots
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Classic polka dot pattern, evenly spaced circles, vintage dot pattern
+
+## Gobo 84: stripes_vertical
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Vertical parallel stripes, even bar pattern, venetian blind style
+
+## Gobo 85: stripes_horizontal
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Horizontal parallel stripes, ladder pattern, horizontal bars
+
+## Gobo 86: stripes_diagonal
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Diagonal stripes at 45 degrees, candy cane style, angled lines
+
+## Gobo 87: checkerboard
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Chess board checkerboard pattern, alternating squares, black and white tiles
+
+## Gobo 88: chevron
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Chevron arrow pattern, V-shaped stripes, herringbone style
+
+## Gobo 89: zigzag
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Zigzag sawtooth pattern, lightning bolt lines, sharp angular waves
+
+## Gobo 90: crosshatch
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Crosshatch texture pattern, woven basket style, intersecting diagonal lines
+
+## Gobo 91: palm_leaves
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Tropical palm frond silhouettes, coconut palm leaves, beach paradise pattern
+
+## Gobo 92: palm_fronds
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Detailed palm fronds with fine texture, tropical foliage, feathery palm leaves
+
+## Gobo 93: tropical_leaves
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Mixed tropical foliage, monstera banana bird of paradise leaves, jungle pattern
+
+## Gobo 94: monstera
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Monstera deliciosa leaf pattern, Swiss cheese plant, iconic split leaves
+
+## Gobo 95: sand_texture
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Fine sand grain texture, beach sand pattern, granular noise texture
+
+## Gobo 96: sand_dunes
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Desert sand dune waves, flowing dune lines, Sahara landscape pattern
+
+## Gobo 97: lava_flow
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Flowing molten lava pattern, volcanic magma texture, hot flowing liquid
+
+## Gobo 98: lava_cracks
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Cracked cooled lava surface, volcanic rock fractures, basalt pattern
+
+## Gobo 99: rock_texture
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Natural rock surface texture, stone pattern, rough geological texture
+
+## Gobo 100: stone_wall
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Stone masonry wall pattern, stacked stones, dry stone wall texture
+
+## Gobo 101: wood_grain
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Natural wood grain lines, timber texture, organic wood pattern
+
+## Gobo 102: bark
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Tree bark texture pattern, rough bark surface, oak or pine bark
+
+## Gobo 103: coral
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Coral reef pattern, branching coral silhouettes, marine coral texture
+
+## Gobo 104: seaweed
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Flowing seaweed strands, kelp forest pattern, underwater plant silhouettes
+
+## Gobo 105: flames
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Fire flame silhouettes, burning flames pattern, campfire flames
+
+## Gobo 106: fire_flicker
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Dynamic flickering fire pattern, dancing flames, bonfire texture
+
+## Gobo 107: smoke
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Wispy smoke tendrils, rising smoke pattern, ethereal mist
+
+## Gobo 108: fog
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Soft fog and mist pattern, atmospheric haze, gentle gradients
+
+## Gobo 109: lightning
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Lightning bolt pattern, electrical discharge, jagged electric lines
+
+## Gobo 110: aurora
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Aurora borealis pattern, northern lights waves, flowing curtain lights
+
+## Gobo 111: galaxy_spiral
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Spiral galaxy pattern, Milky Way style, swirling cosmic arms with stars
+
+## Gobo 112: galaxy_cluster
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Multiple galaxy cluster, deep space galaxies, cosmic grouping
+
+## Gobo 113: nebula_1
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Nebula gas cloud pattern, Orion nebula style, cosmic dust and gas
+
+## Gobo 114: nebula_2
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Colorful nebula formation, Crab nebula style, stellar nursery
+
+## Gobo 115: nebula_3
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Ring nebula pattern, planetary nebula, circular cosmic gas
+
+## Gobo 116: star_field_sparse
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Sparse starfield pattern, few bright stars, night sky
+
+## Gobo 117: star_field_dense
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Dense starfield pattern, thousands of stars, Milky Way band
+
+## Gobo 118: star_cluster
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Concentrated star cluster, globular cluster, dense stellar group
+
+## Gobo 119: comet
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Comet with glowing tail, shooting star streak, cosmic ice ball
+
+## Gobo 120: meteor_shower
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Multiple meteor streaks, Perseids shower, falling stars pattern
+
+## Gobo 121: planet_ring
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Saturn-like planet rings, concentric orbital rings, planetary system
+
+## Gobo 122: jupiter
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Jupiter bands pattern, gas giant stripes, Great Red Spot style
+
+## Gobo 123: moon_surface
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Lunar crater pattern, moon surface texture, impact craters
+
+## Gobo 124: sun_flare
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Solar flare burst, radial sun rays, corona pattern
+
+## Gobo 125: solar_eclipse
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Solar eclipse corona, ring of light, diamond ring effect
+
+## Gobo 126: black_hole
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Black hole with accretion disk, gravitational lensing effect
+
+## Gobo 127: wormhole
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Wormhole tunnel pattern, space-time vortex, spiral tunnel
+
+## Gobo 128: space_dust
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Cosmic dust particles, interstellar medium, fine space debris
+
+## Gobo 129: asteroid_field
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Asteroid silhouettes, space rocks pattern, rocky debris field
+
+## Gobo 130: supernova
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Supernova explosion pattern, stellar explosion, radial debris
+
+## Gobo 131: shredded_water
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Shredded abstract water pattern, torn liquid texture, Apollo shredded style
+
+## Gobo 132: shredded_earth
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Shredded abstract earth pattern, torn soil texture, organic shreds
+
+## Gobo 133: shredded_fire
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Shredded abstract fire pattern, torn flame texture, fiery shreds
+
+## Gobo 134: paint_mix
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Swirled paint marble pattern, mixed paint texture, fluid art
+
+## Gobo 135: paint_splatter
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Paint splatter pattern, Jackson Pollock style, thrown paint
+
+## Gobo 136: ink_blot
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Rorschach inkblot pattern, symmetrical ink splash, psychological test
+
+## Gobo 137: swirls
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Spiral swirl pattern, decorative scrollwork, flowing curves
+
+## Gobo 138: curls
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Decorative curl pattern, baroque scrolls, ornamental waves
+
+## Gobo 139: noise_fine
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Fine noise texture, TV static, high frequency grain
+
+## Gobo 140: noise_coarse
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Coarse noise texture, large grain pattern, low frequency noise
+
+## Gobo 141: perlin_noise
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Organic Perlin noise pattern, natural random texture, smooth noise
+
+## Gobo 142: fractal_1
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Mandelbrot fractal pattern, mathematical fractal, infinite detail
+
+## Gobo 143: fractal_2
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Julia set fractal pattern, complex fractal, mathematical beauty
+
+## Gobo 144: marble
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Marble stone veins pattern, Italian marble texture, elegant stone
+
+## Gobo 145: granite
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Granite speckle pattern, spotted stone texture, igneous rock
+
+## Gobo 146: rust
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Rust and corrosion pattern, oxidized metal texture, decay
+
+## Gobo 147: patina
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Copper patina pattern, verdigris texture, aged bronze green
+
+## Gobo 148: grunge
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Grunge texture pattern, dirty worn surface, distressed urban
+
+## Gobo 149: distressed
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Distressed weathered pattern, peeling paint, aged surface
+
+## Gobo 150: cracked
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Cracked surface pattern, dried mud cracks, parched earth
+
+## Gobo 151: window_single
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Single window frame silhouette, four pane window, residential window
+
+## Gobo 152: window_grid
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Multiple window grid, apartment building windows, window wall
+
+## Gobo 153: window_gothic
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Gothic arch window, cathedral window shape, pointed arch
+
+## Gobo 154: window_church
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Church stained glass window shape, religious window, rose window
+
+## Gobo 155: blinds_horizontal
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Horizontal venetian blinds, window blinds pattern, slat shadows
+
+## Gobo 156: blinds_vertical
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Vertical blinds pattern, office blinds, tall slat shadows
+
+## Gobo 157: blinds_angled
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Angled half-open blinds, tilted slat pattern, directional light
+
+## Gobo 158: bars_vertical
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Vertical bar pattern, prison bars, parallel vertical lines
+
+## Gobo 159: bars_horizontal
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Horizontal bars pattern, ladder rungs, parallel horizontal lines
+
+## Gobo 160: prison_bars
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Prison window with bars, jail cell window, captivity symbol
+
+## Gobo 161: gate_ornate
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Ornate decorative iron gate, Victorian gate, scrollwork fence
+
+## Gobo 162: gate_iron
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Simple iron gate pattern, wrought iron bars, security gate
+
+## Gobo 163: fence_chain_link
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Chain link fence pattern, diamond mesh, security fence
+
+## Gobo 164: fence_picket
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Picket fence silhouette, pointed fence posts, suburban fence
+
+## Gobo 165: brick_wall
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Brick wall pattern, running bond brickwork, masonry texture
+
+## Gobo 166: tile_floor
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Floor tile pattern, checkered tiles, ceramic floor
+
+## Gobo 167: staircase
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Staircase shadow pattern, steps silhouette, ascending stairs
+
+## Gobo 168: columns
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Classical column shadows, Greek columns, architectural pillars
+
+## Gobo 169: arches
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Roman arch series, arcade arches, architectural arches
+
+## Gobo 170: skylight
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Skylight grid pattern, glass ceiling, atrium roof
+
+## Gobo 171: organic_blob_1
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Organic amoeba blob shape, fluid organic form, biomorphic
+
+## Gobo 172: organic_blob_2
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Second organic blob variation, different amoeba shape
+
+## Gobo 173: organic_blob_3
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Third organic blob pattern, unique biomorphic form
+
+## Gobo 174: splatter_1
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Abstract splatter pattern 1, liquid splash, impact pattern
+
+## Gobo 175: splatter_2
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Abstract splatter pattern 2, different splash shape
+
+## Gobo 176: splatter_3
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Abstract splatter pattern 3, third splash variation
+
+## Gobo 177: gradient_radial
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Radial gradient pattern, center to edge fade, spotlight
+
+## Gobo 178: gradient_linear
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Linear gradient pattern, top to bottom fade, gradual transition
+
+## Gobo 179: gradient_angular
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Angular sweep gradient, cone gradient, rotational fade
+
+## Gobo 180: vignette_soft
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Soft vignette edge, gentle corner darkening, subtle frame
+
+## Gobo 181: vignette_hard
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Hard vignette edge, sharp corner cutoff, bold frame
+
+## Gobo 182: spotlight
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Single spotlight circle, centered bright spot, focused light
+
+## Gobo 183: beam_single
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Single light beam shaft, ray of light, diagonal beam
+
+## Gobo 184: beam_array
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Multiple light beams, parallel rays, sunbeam array
+
+## Gobo 185: rays_radial
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Radial sunray pattern, rays from center, starburst
+
+## Gobo 186: rays_burst
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Explosive ray burst, dynamic starburst, energy explosion
+
+## Gobo 187: waves
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Sine wave pattern, flowing waves, rhythmic curves
+
+## Gobo 188: ripples
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Concentric ripple circles, water drop ripples, expanding rings
+
+## Gobo 189: interference
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Wave interference pattern, physics pattern, overlapping waves
+
+## Gobo 190: moire
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Moiré visual effect, interference pattern, optical illusion
+
+## Gobo 191: custom_1
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Abstract artistic pattern 1, unique design, custom gobo
+
+## Gobo 192: custom_2
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Abstract artistic pattern 2, unique design, custom gobo
+
+## Gobo 193: custom_3
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Abstract artistic pattern 3, unique design, custom gobo
+
+## Gobo 194: custom_4
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Abstract artistic pattern 4, unique design, custom gobo
+
+## Gobo 195: custom_5
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Abstract artistic pattern 5, unique design, custom gobo
+
+## Gobo 196: custom_6
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Abstract artistic pattern 6, unique design, custom gobo
+
+## Gobo 197: custom_7
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Abstract artistic pattern 7, unique design, custom gobo
+
+## Gobo 198: custom_8
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Abstract artistic pattern 8, unique design, custom gobo
+
+## Gobo 199: custom_9
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Abstract artistic pattern 9, unique design, custom gobo
+
+## Gobo 200: custom_10
+Create a theatrical lighting gobo pattern.
+The image should be a high-contrast black and white circular mask design, like a metal stencil used in stage lighting.
+White areas = where light passes through. Black areas = where light is blocked.
+Professional quality, crisp edges, centered in frame, suitable for projection.
+Style: Apollo Design gobos, theatrical lighting, stage design.
+
+Specific pattern: Abstract artistic pattern 10, unique design, custom gobo
+

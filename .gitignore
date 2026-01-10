@@ -1,0 +1,48 @@
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# Xcode
+*.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+DerivedData/
+*.xccheckout
+*.xcscmblueprint
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Build artifacts
+*.o
+*.a
+*.dylib
+
+# Debug
+*.dSYM/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# User-specific gobo uploads (keep defaults)
+# gobos/custom/
+
+# Logs
+logs/
+*.log
+
+# License files (generated, not committed)
+*.license

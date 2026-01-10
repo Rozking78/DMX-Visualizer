@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GMA3 DataVersion="1.7.0.0">
+    <Plugin Name="GeoDraw" Description="Layout calculator for GeoDraw fixtures" Author="Roz" Version="1.0.0" />
+</GMA3>

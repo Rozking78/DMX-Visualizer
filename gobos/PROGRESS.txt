@@ -1,0 +1,10 @@
+=== GOBO GENERATOR STATUS ===
+Status: COMPLETE
+Current: [200/200] DONE
+Progress: 150/150 (100.0%)
+Success: 150 | Failed: 0
+Elapsed: 1339.1 min
+ETA: 0.0 min remaining
+================================
+
+To monitor: cat gobos/PROGRESS.txt
