@@ -397,12 +397,40 @@ final class OutputManager: @unchecked Sendable {
         saveOutputConfigs()
     }
 
+    // Temporary storage for outputs pending deletion (prevents premature deallocation)
+    // Keep GDDisplayOutput/GDNDIOutput references alive until autorelease pool drains
+    private var pendingDisplayOutputs: [GDDisplayOutput] = []
+    private var pendingNDIOutputs: [GDNDIOutput] = []
+
     func removeOutput(id: UUID) {
         guard let output = outputs[id] else { return }
 
-        stopOutput(output)
+        // Remove from dictionary FIRST to prevent any other code from accessing it
         outputs.removeValue(forKey: id)
         saveOutputConfigs()
+
+        // Stop the outputs first
+        output.displayOutput?.stop()
+        output.ndiOutput?.stop()
+
+        // Move the output objects to pending arrays BEFORE clearing references
+        // This keeps the underlying Objective-C/C++ objects alive
+        if let displayOut = output.displayOutput {
+            pendingDisplayOutputs.append(displayOut)
+        }
+        if let ndiOut = output.ndiOutput {
+            pendingNDIOutputs.append(ndiOut)
+        }
+
+        // Now clear the references on ManagedOutput
+        output.displayOutput = nil
+        output.ndiOutput = nil
+
+        // Clean up pending outputs on next run loop iteration (after autorelease pool drain)
+        DispatchQueue.main.async { [weak self] in
+            self?.pendingDisplayOutputs.removeAll()
+            self?.pendingNDIOutputs.removeAll()
+        }
 
         print("OutputManager: Removed output \(id)")
     }

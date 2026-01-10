@@ -241,6 +241,12 @@ final class WebServer: @unchecked Sendable {
         if path == "/media/videos/upload" && method == "POST" {
             return handleVideoUpload(request: request)
         }
+        if path == "/media/images" && method == "GET" {
+            return handleGetImages()
+        }
+        if path == "/media/images/upload" && method == "POST" {
+            return handleImageUpload(request: request)
+        }
 
         // NDI endpoints
         if path == "/ndi/sources" && method == "GET" {
@@ -286,20 +292,20 @@ final class WebServer: @unchecked Sendable {
             return HTTPResponse.notFound()
         }
 
-        // Resize to thumbnail
-        let maxWidth: CGFloat = 320
-        let scale = maxWidth / image.size.width
-        let newSize = NSSize(width: maxWidth, height: image.size.height * scale)
+        // Resize to preview (larger for full-width display)
+        let maxWidth: CGFloat = 960
+        let scale = min(1.0, maxWidth / image.size.width)  // Don't upscale
+        let newSize = NSSize(width: image.size.width * scale, height: image.size.height * scale)
 
-        let thumbnail = NSImage(size: newSize)
-        thumbnail.lockFocus()
+        let preview = NSImage(size: newSize)
+        preview.lockFocus()
         image.draw(in: NSRect(origin: .zero, size: newSize))
-        thumbnail.unlockFocus()
+        preview.unlockFocus()
 
-        // Convert to JPEG
-        guard let tiff = thumbnail.tiffRepresentation,
+        // Convert to JPEG (higher quality for larger preview)
+        guard let tiff = preview.tiffRepresentation,
               let bitmap = NSBitmapImageRep(data: tiff),
-              let jpeg = bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.7]) else {
+              let jpeg = bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.85]) else {
             return HTTPResponse.error(500, "Failed to encode image")
         }
 
@@ -541,6 +547,10 @@ final class WebServer: @unchecked Sendable {
                 slotInfo["type"] = "video"
                 slotInfo["source"] = path
                 slotInfo["displayName"] = URL(fileURLWithPath: path).lastPathComponent
+            case .image(let path):
+                slotInfo["type"] = "image"
+                slotInfo["source"] = path
+                slotInfo["displayName"] = URL(fileURLWithPath: path).lastPathComponent
             case .ndi(let sourceName):
                 slotInfo["type"] = "ndi"
                 slotInfo["source"] = sourceName
@@ -571,6 +581,8 @@ final class WebServer: @unchecked Sendable {
 
         if type == "ndi" {
             MediaSlotConfig.shared.assignNDI(sourceName: source, toSlot: slot)
+        } else if type == "image" {
+            MediaSlotConfig.shared.assignImage(path: source, toSlot: slot)
         } else {
             MediaSlotConfig.shared.assignVideo(path: source, toSlot: slot)
         }
@@ -647,6 +659,62 @@ final class WebServer: @unchecked Sendable {
         }
     }
 
+    // MARK: - Image Handlers
+
+    private func handleGetImages() -> HTTPResponse {
+        let imagesFolder = getImagesFolder()
+
+        guard let contents = try? FileManager.default.contentsOfDirectory(
+            at: imagesFolder,
+            includingPropertiesForKeys: [.contentModificationDateKey],
+            options: [.skipsHiddenFiles]
+        ) else {
+            return HTTPResponse.json(["images": [], "folder": imagesFolder.path])
+        }
+
+        let imageExtensions = ["png", "jpg", "jpeg", "gif", "tiff", "bmp", "webp"]
+        let images = contents
+            .filter { imageExtensions.contains($0.pathExtension.lowercased()) }
+            .map { ["filename": $0.lastPathComponent, "path": $0.path] }
+
+        return HTTPResponse.json(["images": images, "folder": imagesFolder.path])
+    }
+
+    private func handleImageUpload(request: HTTPRequest) -> HTTPResponse {
+        NSLog("WebServer: handleImageUpload called")
+        guard let contentType = request.headers["content-type"],
+              contentType.contains("multipart/form-data"),
+              let boundary = extractBoundary(from: contentType) else {
+            NSLog("WebServer: Image upload - missing content-type or boundary")
+            return HTTPResponse.badRequest("Expected multipart/form-data")
+        }
+
+        NSLog("WebServer: Image upload - body size: %d bytes", request.body.count)
+
+        guard let parts = parseMultipart(data: request.body, boundary: boundary),
+              let filePart = parts.first(where: { $0.filename != nil }),
+              let filename = filePart.filename else {
+            NSLog("WebServer: Image upload - failed to parse multipart or no file found")
+            return HTTPResponse.badRequest("No file uploaded")
+        }
+
+        let imagesFolder = getImagesFolder()
+        try? FileManager.default.createDirectory(at: imagesFolder, withIntermediateDirectories: true)
+        let fileURL = imagesFolder.appendingPathComponent(filename)
+
+        do {
+            try filePart.data.write(to: fileURL)
+            NSLog("WebServer: Image saved to %@", fileURL.path)
+            return HTTPResponse.json([
+                "success": true,
+                "filename": filename,
+                "path": fileURL.path
+            ])
+        } catch {
+            return HTTPResponse.error(500, "Failed to save image: \(error.localizedDescription)")
+        }
+    }
+
     // MARK: - NDI Handlers
 
     @MainActor
@@ -673,6 +741,11 @@ final class WebServer: @unchecked Sendable {
     private func getVideosFolder() -> URL {
         return FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Documents/DMXMedia/videos")
+    }
+
+    private func getImagesFolder() -> URL {
+        return FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Documents/DMXMedia/images")
     }
 
     private func extractBoundary(from contentType: String) -> String? {
@@ -972,10 +1045,29 @@ private let indexHTML = """
 
         /* Status Panel */
         .status-grid {
-            display: grid;
-            grid-template-columns: 320px 1fr;
+            display: flex;
+            flex-direction: column;
             gap: 1rem;
             margin-bottom: 1rem;
+        }
+        .status-info {
+            background: var(--bg-panel);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-default);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+        }
+        .status-item {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        .status-value {
+            color: var(--neon-green);
+            font-weight: bold;
+            text-shadow: 0 0 5px var(--neon-green);
         }
         .preview-container {
             background: #000;
@@ -983,29 +1075,13 @@ private let indexHTML = """
             overflow: hidden;
             border: 2px solid var(--neon-cyan);
             box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+            width: 100%;
         }
         .preview-container img {
             width: 100%;
             height: auto;
             display: block;
-        }
-        .status-info {
-            background: var(--bg-panel);
-            padding: 1rem;
-            border-radius: 8px;
-            border: 1px solid var(--border-default);
-        }
-        .status-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 0.5rem 0;
-            border-bottom: 1px solid var(--border-default);
-        }
-        .status-item:last-child { border-bottom: none; }
-        .status-value {
-            color: var(--neon-green);
-            font-weight: bold;
-            text-shadow: 0 0 5px var(--neon-green);
+            transition: opacity 0.1s ease;
         }
 
         /* Gobo Grid */
@@ -1197,26 +1273,26 @@ private let indexHTML = """
         <!-- Status Section -->
         <div id="status" class="section active">
             <div class="status-grid">
-                <div class="preview-container">
-                    <img id="preview" src="/api/v1/status/preview" alt="Preview">
-                </div>
                 <div class="status-info">
                     <div class="status-item">
-                        <span>Version</span>
+                        <span>Version:</span>
                         <span class="status-value" id="version">-</span>
                     </div>
                     <div class="status-item">
-                        <span>Fixtures</span>
+                        <span>Fixtures:</span>
                         <span class="status-value" id="fixtures">-</span>
                     </div>
                     <div class="status-item">
-                        <span>Resolution</span>
+                        <span>Resolution:</span>
                         <span class="status-value" id="resolution">-</span>
                     </div>
                     <div class="status-item">
-                        <span>Syphon Output</span>
+                        <span>Syphon:</span>
                         <span class="status-value" id="syphon">-</span>
                     </div>
+                </div>
+                <div class="preview-container">
+                    <img id="preview" src="/api/v1/status/preview" alt="Preview">
                 </div>
             </div>
         </div>
@@ -1242,11 +1318,19 @@ private let indexHTML = """
         <!-- Media Slots Section -->
         <div id="media" class="section">
             <h2>Media Slots (201-255)</h2>
-            <div class="upload-zone" id="videoUpload">
-                <p>Drag & drop video files here</p>
-                <button class="btn-browse" onclick="document.getElementById('videoFileInput').click()">Browse Files</button>
-                <input type="file" id="videoFileInput" accept=".mp4,.mov,.avi,.mkv,.m4v,video/*" multiple>
-                <div class="upload-status" id="videoUploadStatus"></div>
+            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                <div class="upload-zone" id="videoUpload" style="flex: 1; min-width: 200px;">
+                    <p>Drag & drop <b>video</b> files here</p>
+                    <button class="btn-browse" onclick="document.getElementById('videoFileInput').click()">Browse Videos</button>
+                    <input type="file" id="videoFileInput" accept=".mp4,.mov,.avi,.mkv,.m4v,video/*" multiple>
+                    <div class="upload-status" id="videoUploadStatus"></div>
+                </div>
+                <div class="upload-zone" id="imageUpload" style="flex: 1; min-width: 200px;">
+                    <p>Drag & drop <b>image</b> files here</p>
+                    <button class="btn-browse" onclick="document.getElementById('imageFileInput').click()">Browse Images</button>
+                    <input type="file" id="imageFileInput" accept=".png,.jpg,.jpeg,.gif,.tiff,.bmp,.webp,image/*" multiple>
+                    <div class="upload-status" id="imageUploadStatus"></div>
+                </div>
             </div>
             <table class="slots-table">
                 <thead>
@@ -1472,6 +1556,7 @@ private let indexHTML = """
         // Media Slots
         let availableVideos = [];
         let availableNDI = [];
+        let availableImages = [];
 
         async function loadVideos() {
             try {
@@ -1489,8 +1574,16 @@ private let indexHTML = """
             } catch (e) { console.error('NDI error:', e); }
         }
 
+        async function loadImages() {
+            try {
+                const res = await fetch('/api/v1/media/images');
+                const data = await res.json();
+                availableImages = data.images || [];
+            } catch (e) { console.error('Images error:', e); }
+        }
+
         async function loadSlots() {
-            await Promise.all([loadVideos(), loadNDISources()]);
+            await Promise.all([loadVideos(), loadNDISources(), loadImages()]);
             try {
                 const res = await fetch('/api/v1/media/slots');
                 const data = await res.json();
@@ -1507,6 +1600,9 @@ private let indexHTML = """
                                     <option value="">Assign Source...</option>
                                     <optgroup label="Videos">
                                         ${availableVideos.map(v => `<option value="video:${v.path}">${v.filename}</option>`).join('')}
+                                    </optgroup>
+                                    <optgroup label="Images">
+                                        ${availableImages.map(i => `<option value="image:${i.path}">${i.filename}</option>`).join('')}
                                     </optgroup>
                                     <optgroup label="NDI Sources">
                                         ${availableNDI.map(n => `<option value="ndi:${n.name}">${n.name}</option>`).join('')}
@@ -1657,10 +1753,11 @@ private let indexHTML = """
             setTimeout(() => { status.textContent = ''; }, 3000);
         });
         setupUpload('videoUpload', 'videoFileInput', 'videoUploadStatus', '/api/v1/media/videos/upload', loadSlots);
+        setupUpload('imageUpload', 'imageFileInput', 'imageUploadStatus', '/api/v1/media/images/upload', loadSlots);
 
         // Auto-refresh
         setInterval(updateStatus, 5000);
-        setInterval(updatePreview, 500);
+        setInterval(updatePreview, 100);  // Smoother 10fps preview
     </script>
 </body>
 </html>

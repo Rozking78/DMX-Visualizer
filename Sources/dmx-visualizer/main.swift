@@ -2824,9 +2824,6 @@ extension MetalRenderView: MTKViewDelegate {
             return
         }
 
-        // Apply all collected video playback states
-        VideoSlotManager.shared.applyCollectedStates()
-
         // If Syphon or OutputManager has enabled outputs, render to offscreen texture at full canvas resolution
         let hasEnabledOutputs = !OutputManager.shared.getAllOutputs().filter { $0.config.enabled }.isEmpty
         let needsOffscreen = (syphonEnabled || hasEnabledOutputs) && offscreenTexture != nil
@@ -2866,6 +2863,9 @@ extension MetalRenderView: MTKViewDelegate {
         }
 
         renderEncoder.endEncoding()
+
+        // Apply all collected video playback states (after rendering collected them)
+        VideoSlotManager.shared.applyCollectedStates()
 
         // Publish offscreen texture to Syphon if enabled (full canvas resolution)
         if syphonEnabled, let server = syphonServer, let offscreen = offscreenTexture {
@@ -2983,12 +2983,18 @@ extension MetalRenderView: MTKViewDelegate {
 
             // Use video texture with crossfadable color/mask blend
             if let videoTexture = VideoSlotManager.shared.getTexture(forSlot: slotIndex) {
-                // Adjust scale to maintain native aspect ratio of video/NDI source
-                // This ensures 16:9 content displays as 16:9, not squashed into 1:1
-                let textureAspect = Float(videoTexture.width) / Float(videoTexture.height)
-                uniforms.scale.x *= textureAspect
+                // Calculate scale to render at native resolution
+                // baseRadius * 2 = 240 pixels at scale 1.0
+                // To get native pixels: nativeWidth / 240 = required scale
+                let nativeScaleX = Float(videoTexture.width) / 240.0
+                let nativeScaleY = Float(videoTexture.height) / 240.0
 
-                // Set uniforms with aspect-corrected scale
+                // Apply native scale, then multiply by DMX scale factor
+                // At DMX scale=1.0, media renders at native resolution
+                uniforms.scale.x = nativeScaleX * Float(obj.scale.width)
+                uniforms.scale.y = nativeScaleY * Float(obj.scale.height)
+
+                // Set uniforms with native-resolution scale
                 encoder.setVertexBytes(&uniforms, length: MemoryLayout<MetalObjectUniforms>.stride, index: 1)
                 encoder.setFragmentBytes(&uniforms, length: MemoryLayout<MetalObjectUniforms>.stride, index: 1)
 
@@ -3810,6 +3816,7 @@ enum GoboCategory: String, CaseIterable {
 enum MediaSourceType: Codable, Equatable {
     case video(path: String)         // Video file path
     case ndi(sourceName: String)     // NDI source by name
+    case image(path: String)         // Static image file path (PNG, JPG, etc.)
     case none                        // Unassigned
 
     var displayName: String {
@@ -3818,6 +3825,8 @@ enum MediaSourceType: Codable, Equatable {
             return URL(fileURLWithPath: path).lastPathComponent
         case .ndi(let name):
             return "NDI: \(name)"
+        case .image(let path):
+            return "IMG: \(URL(fileURLWithPath: path).lastPathComponent)"
         case .none:
             return "Empty"
         }
@@ -3830,6 +3839,11 @@ enum MediaSourceType: Codable, Equatable {
 
     var isNDI: Bool {
         if case .ndi = self { return true }
+        return false
+    }
+
+    var isImage: Bool {
+        if case .image = self { return true }
         return false
     }
 }
@@ -3873,6 +3887,14 @@ final class MediaSlotConfig: ObservableObject {
         assignments[slot] = .ndi(sourceName: sourceName)
         saveConfig()
         print("MediaSlotConfig: Slot \(slot) assigned to NDI '\(sourceName)'")
+    }
+
+    /// Assign a static image to a slot
+    func assignImage(path: String, toSlot slot: Int) {
+        guard slot >= 201 && slot <= 255 else { return }
+        assignments[slot] = .image(path: path)
+        saveConfig()
+        print("MediaSlotConfig: Slot \(slot) assigned to image '\(URL(fileURLWithPath: path).lastPathComponent)'")
     }
 
     /// Clear assignment for a slot
@@ -3985,6 +4007,10 @@ struct MediaSlotConfigView: View {
                                 Image(systemName: "film")
                                     .foregroundColor(.blue)
                                 Text(URL(fileURLWithPath: path).lastPathComponent)
+                            case .image(let path):
+                                Image(systemName: "photo")
+                                    .foregroundColor(.purple)
+                                Text(URL(fileURLWithPath: path).lastPathComponent)
                             case .ndi(let name):
                                 Image(systemName: "antenna.radiowaves.left.and.right")
                                     .foregroundColor(.green)
@@ -4094,6 +4120,10 @@ struct SlotRowView: View {
             case .video:
                 Image(systemName: "film.fill")
                     .foregroundColor(.blue)
+                    .frame(width: 20)
+            case .image:
+                Image(systemName: "photo.fill")
+                    .foregroundColor(.purple)
                     .frame(width: 20)
             case .ndi:
                 Image(systemName: "antenna.radiowaves.left.and.right")
@@ -4302,14 +4332,23 @@ final class VideoPlayer {
     private var isReversed: Bool = false
     private var didReachEnd: Bool = false
     private var bounceDirection: Float = 1.0
-    private var lastPixelBuffer: CVPixelBuffer?  // Cache last valid frame
+
+    // Double buffering for smooth playback
+    private var displayBuffer: CVPixelBuffer?   // Frame ready for display
+    private var pendingBuffer: CVPixelBuffer?   // Frame being prepared
+    private let bufferLock = NSLock()
+    private var decodeQueue: DispatchQueue
+    private var isDecoding: Bool = false
+    private var shouldDecode: Bool = false
 
     private let videoOutputSettings: [String: Any] = [
         kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
         kCVPixelBufferMetalCompatibilityKey as String: true
     ]
 
-    init() {}
+    init() {
+        decodeQueue = DispatchQueue(label: "com.dmx.videodecode", qos: .userInteractive)
+    }
 
     func load(url: URL) {
         guard url != currentURL else { return }
@@ -4334,6 +4373,10 @@ final class VideoPlayer {
             name: .AVPlayerItemDidPlayToEndTime,
             object: playerItem
         )
+
+        // Start background decode loop
+        shouldDecode = true
+        startDecodeLoop()
 
         print("VideoPlayer: Loaded \(url.lastPathComponent)")
     }
@@ -4369,6 +4412,7 @@ final class VideoPlayer {
 
         switch state {
         case .stop:
+            player.volume = 0  // Mute immediately on stop
             player.pause()
             player.seek(to: .zero)
 
@@ -4430,30 +4474,59 @@ final class VideoPlayer {
     }
 
     func getCurrentFrame() -> CVPixelBuffer? {
-        guard let videoOutput = videoOutput, let player = player else { return lastPixelBuffer }
+        // Return the display buffer (thread-safe read)
+        bufferLock.lock()
+        let frame = displayBuffer
+        bufferLock.unlock()
+        return frame
+    }
 
-        let currentTime = player.currentTime()
-        if videoOutput.hasNewPixelBuffer(forItemTime: currentTime) {
-            if let newBuffer = videoOutput.copyPixelBuffer(forItemTime: currentTime, itemTimeForDisplay: nil) {
-                lastPixelBuffer = newBuffer
-                return newBuffer
+    /// Background decode loop - continuously decodes frames ahead of display
+    private func startDecodeLoop() {
+        guard !isDecoding else { return }
+        isDecoding = true
+
+        decodeQueue.async { [weak self] in
+            while let self = self, self.shouldDecode {
+                guard let videoOutput = self.videoOutput,
+                      let player = self.player else {
+                    Thread.sleep(forTimeInterval: 0.001)
+                    continue
+                }
+
+                let currentTime = player.currentTime()
+                if videoOutput.hasNewPixelBuffer(forItemTime: currentTime) {
+                    if let newBuffer = videoOutput.copyPixelBuffer(forItemTime: currentTime, itemTimeForDisplay: nil) {
+                        // Swap buffers atomically
+                        self.bufferLock.lock()
+                        self.pendingBuffer = self.displayBuffer
+                        self.displayBuffer = newBuffer
+                        self.bufferLock.unlock()
+                    }
+                }
+
+                // Small sleep to prevent busy-waiting (~120Hz check rate)
+                Thread.sleep(forTimeInterval: 0.008)
             }
+            self?.isDecoding = false
         }
-        // Return cached frame if no new frame available
-        return lastPixelBuffer
     }
 
     func stop() {
+        shouldDecode = false  // Stop decode loop
         player?.pause()
         player = nil
         if let item = playerItem {
             NotificationCenter.default.removeObserver(self, name: .AVPlayerItemDidPlayToEndTime, object: item)
         }
         playerItem = nil
+        bufferLock.lock()
+        displayBuffer = nil
+        pendingBuffer = nil
+        bufferLock.unlock()
         videoOutput = nil
         currentURL = nil
         didReachEnd = false
-        lastPixelBuffer = nil
     }
 
     deinit {
@@ -4471,6 +4544,7 @@ final class VideoSlotManager {
     private var textureCache: CVMetalTextureCache?
     private var device: MTLDevice?
     private var lastTextures: [String: MTLTexture] = [:]  // Cache last valid texture per path
+    private var imageTextures: [String: MTLTexture] = [:]  // Cache static image textures
 
     // Frame-level caching: texture created once per frame per slot, shared across all fixtures
     private var currentFrameId: UInt64 = 0
@@ -4499,6 +4573,35 @@ final class VideoSlotManager {
         currentFrameId &+= 1
         framePlaybackUpdated.removeAll()
         pendingSlotStates.removeAll()
+
+        // Periodically clean up unused video players (every ~60 frames)
+        if currentFrameId % 60 == 0 {
+            cleanupUnusedPlayers()
+        }
+    }
+
+    /// Stop and remove video players that are no longer assigned to any slot
+    private func cleanupUnusedPlayers() {
+        // Get all video paths currently in use
+        var usedPaths = Set<String>()
+        for slot in 201...255 {
+            let source = MediaSlotConfig.shared.getSource(forSlot: slot)
+            if case .video(let path) = source {
+                usedPaths.insert(path)
+            }
+        }
+
+        // Find and remove unused players
+        let allPaths = Array(videoPlayers.keys)
+        for path in allPaths {
+            if !usedPaths.contains(path) {
+                if let player = videoPlayers.removeValue(forKey: path) {
+                    player.stop()
+                    print("VideoSlotManager: Stopped unused player for \(URL(fileURLWithPath: path).lastPathComponent)")
+                }
+                lastTextures.removeValue(forKey: path)
+            }
+        }
     }
 
     // Collect video states from all objects, then apply the "most active" per slot
@@ -4571,9 +4674,25 @@ final class VideoSlotManager {
                 lastAppliedState[slotIndex] = (state, gotoPercent, volume)
             }
 
-        case .ndi, .none:
+        case .ndi, .image, .none:
+            // NDI and images don't need playback control
+            // But if there was a previous video on this slot, stop it
+            if let lastState = lastAppliedState[slotIndex] {
+                // Slot changed from video to something else - clear state
+                lastAppliedState.removeValue(forKey: slotIndex)
+            }
             break
         }
+    }
+
+    /// Stop a specific video player by path and mute it immediately
+    func stopVideoPlayer(forPath path: String) {
+        if let player = videoPlayers[path] {
+            player.setVolume(0)  // Mute immediately
+            player.stop()
+        }
+        videoPlayers.removeValue(forKey: path)
+        lastTextures.removeValue(forKey: path)
     }
 
     /// Get or create video player for a file path
@@ -4630,10 +4749,89 @@ final class VideoSlotManager {
             }
             return nil
 
+        case .image(let path):
+            // Get static image texture (cached)
+            if let texture = getImageTexture(forPath: path) {
+                frameTextureCache[slotIndex] = (currentFrameId, texture)
+                return texture
+            }
+            return nil
+
         case .none:
             // Slot not configured
             return nil
         }
+    }
+
+    /// Load and cache a static image as a Metal texture
+    private func getImageTexture(forPath path: String) -> MTLTexture? {
+        // Return cached texture if exists
+        if let cached = imageTextures[path] {
+            return cached
+        }
+
+        guard let device = device else { return nil }
+
+        // Load image from disk
+        guard let image = NSImage(contentsOfFile: path),
+              let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
+        else {
+            print("VideoSlotManager: Failed to load image: \(path)")
+            return nil
+        }
+
+        // Create Metal texture from CGImage
+        let width = cgImage.width
+        let height = cgImage.height
+
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm,
+            width: width,
+            height: height,
+            mipmapped: false
+        )
+        descriptor.usage = [.shaderRead]
+
+        guard let texture = device.makeTexture(descriptor: descriptor) else {
+            print("VideoSlotManager: Failed to create texture for image: \(path)")
+            return nil
+        }
+
+        // Convert CGImage to BGRA pixel data
+        let bytesPerPixel = 4
+        let bytesPerRow = width * bytesPerPixel
+        var pixelData = [UInt8](repeating: 0, count: width * height * bytesPerPixel)
+
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        guard let context = CGContext(
+            data: &pixelData,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: bytesPerRow,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
+        ) else {
+            print("VideoSlotManager: Failed to create CGContext for image: \(path)")
+            return nil
+        }
+
+        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+
+        // Upload to Metal texture
+        texture.replace(
+            region: MTLRegion(origin: MTLOrigin(x: 0, y: 0, z: 0),
+                              size: MTLSize(width: width, height: height, depth: 1)),
+            mipmapLevel: 0,
+            withBytes: pixelData,
+            bytesPerRow: bytesPerRow
+        )
+
+        // Cache the texture
+        imageTextures[path] = texture
+        print("VideoSlotManager: Loaded image texture \(width)x\(height) from \(URL(fileURLWithPath: path).lastPathComponent)")
+
+        return texture
     }
 
     func updatePlaybackState(forSlot slotIndex: Int, state: VideoPlaybackState, gotoPercent: Float?, volume: Float = 1.0) {
@@ -4672,8 +4870,8 @@ final class VideoSlotManager {
                 lastAppliedState[slotIndex] = (state, gotoPercent, volume)
             }
 
-        case .ndi, .none:
-            // NDI sources don't have playback state
+        case .ndi, .image, .none:
+            // NDI sources and static images don't have playback state
             break
         }
     }
