@@ -347,6 +347,10 @@ bool DisplayOutput::start() {
     return true;
 }
 
+// Static storage for windows to prevent crash on deletion
+// Windows are kept alive until app exit to avoid autorelease pool issues
+static NSMutableArray* sPendingWindows = nil;
+
 void DisplayOutput::stop() {
     if (!running_.load()) {
         return;
@@ -354,23 +358,29 @@ void DisplayOutput::stop() {
 
     running_.store(false);
 
-    // Close window on main thread
-    // Check if we're already on main thread to avoid deadlock
+    // DON'T close window - just hide it and keep reference alive
+    // Closing causes EXC_BAD_ACCESS in autorelease pool
     if ([NSThread isMainThread]) {
-        // Already on main thread, close directly
         if (window_) {
-            [window_ close];
+            [window_ orderOut:nil];  // Hide, don't close
+            if (!sPendingWindows) {
+                sPendingWindows = [[NSMutableArray alloc] init];
+            }
+            [sPendingWindows addObject:window_];  // Keep alive
             window_ = nil;
         }
         metal_view_ = nil;
         metal_layer_ = nil;
     } else {
-        // Dispatch to main thread and wait
         dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
 
         dispatch_async(dispatch_get_main_queue(), ^{
             if (window_) {
-                [window_ close];
+                [window_ orderOut:nil];  // Hide, don't close
+                if (!sPendingWindows) {
+                    sPendingWindows = [[NSMutableArray alloc] init];
+                }
+                [sPendingWindows addObject:window_];  // Keep alive
                 window_ = nil;
             }
             metal_view_ = nil;
@@ -378,7 +388,6 @@ void DisplayOutput::stop() {
             dispatch_semaphore_signal(semaphore);
         });
 
-        // Wait with timeout (2 seconds is enough for cleanup)
         dispatch_time_t timeout = dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC);
         dispatch_semaphore_wait(semaphore, timeout);
     }
