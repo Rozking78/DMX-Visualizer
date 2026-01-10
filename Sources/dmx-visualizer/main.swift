@@ -2152,6 +2152,15 @@ final class MetalRenderView: MTKView {
     // This flag kept for menu compatibility but doesn't control anything
     var ndiEnabled: Bool = false
 
+    // Web server helper properties
+    var fixtureCount: Int {
+        return controller.objects.count
+    }
+
+    var activeFixtureCount: Int {
+        return controller.objects.filter { $0.opacity > 0 }.count
+    }
+
     init?(frame: CGRect, controller: SceneController) {
         guard let renderer = MetalRenderer(width: Int(frame.width), height: Int(frame.height)) else {
             return nil
@@ -8803,10 +8812,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
 
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+
+        // Start web server for remote media management
+        WebServer.shared.start()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         receiver.stop()
+        WebServer.shared.stop()
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
