@@ -256,6 +256,44 @@ final class WebServer: @unchecked Sendable {
             return handleRefreshNDI()
         }
 
+        // Output endpoints
+        if path == "/outputs" && method == "GET" {
+            return handleGetOutputs()
+        }
+        if path == "/displays" && method == "GET" {
+            return handleGetDisplays()
+        }
+        if path == "/outputs/display" && method == "POST" {
+            return handleAddDisplayOutput(request: request)
+        }
+        if path == "/outputs/ndi" && method == "POST" {
+            return handleAddNDIOutput(request: request)
+        }
+        if path.hasPrefix("/outputs/") && path.hasSuffix("/enable") && method == "PUT" {
+            let idStr = path.replacingOccurrences(of: "/outputs/", with: "").replacingOccurrences(of: "/enable", with: "")
+            if let uuid = UUID(uuidString: idStr) {
+                return handleEnableOutput(id: uuid, enabled: true)
+            }
+        }
+        if path.hasPrefix("/outputs/") && path.hasSuffix("/disable") && method == "PUT" {
+            let idStr = path.replacingOccurrences(of: "/outputs/", with: "").replacingOccurrences(of: "/disable", with: "")
+            if let uuid = UUID(uuidString: idStr) {
+                return handleEnableOutput(id: uuid, enabled: false)
+            }
+        }
+        if path.hasPrefix("/outputs/") && method == "DELETE" {
+            let idStr = path.replacingOccurrences(of: "/outputs/", with: "")
+            if let uuid = UUID(uuidString: idStr) {
+                return handleRemoveOutput(id: uuid)
+            }
+        }
+        if path == "/syphon/enable" && method == "PUT" {
+            return handleSetSyphon(enabled: true)
+        }
+        if path == "/syphon/disable" && method == "PUT" {
+            return handleSetSyphon(enabled: false)
+        }
+
         return HTTPResponse.notFound()
     }
 
@@ -729,6 +767,131 @@ final class WebServer: @unchecked Sendable {
     private func handleRefreshNDI() -> HTTPResponse {
         NDISourceManager.shared.refreshSources()
         return HTTPResponse.json(["success": true])
+    }
+
+    // MARK: - Output Handlers
+
+    @MainActor
+    private func handleGetOutputs() -> HTTPResponse {
+        let outputs = OutputManager.shared.getAllOutputs()
+        let syphonEnabled = sharedMetalRenderView?.syphonEnabled ?? false
+
+        var outputList: [[String: Any]] = []
+        for output in outputs {
+            var info: [String: Any] = [
+                "id": output.id.uuidString,
+                "name": output.name,
+                "type": output.type == .display ? "display" : "ndi",
+                "enabled": output.config.enabled
+            ]
+            if output.type == .display {
+                info["displayId"] = output.config.displayId as Any
+                info["resolution"] = "\(output.width)x\(output.height)"
+            }
+            outputList.append(info)
+        }
+
+        return HTTPResponse.json([
+            "outputs": outputList,
+            "syphon": syphonEnabled
+        ])
+    }
+
+    @MainActor
+    private func handleGetDisplays() -> HTTPResponse {
+        let displays = OutputManager.shared.getAvailableDisplays()
+        let existingOutputs = OutputManager.shared.getAllOutputs()
+
+        var displayList: [[String: Any]] = []
+        for display in displays {
+            let hasOutput = existingOutputs.contains { $0.config.displayId == display.displayId }
+            displayList.append([
+                "displayId": display.displayId,
+                "name": display.name,
+                "width": display.width,
+                "height": display.height,
+                "refreshRate": display.refreshRate,
+                "isMain": display.isMain,
+                "hasOutput": hasOutput
+            ])
+        }
+
+        return HTTPResponse.json(["displays": displayList])
+    }
+
+    @MainActor
+    private func handleAddDisplayOutput(request: HTTPRequest) -> HTTPResponse {
+        guard let json = try? JSONSerialization.jsonObject(with: request.body) as? [String: Any],
+              let displayId = json["displayId"] as? UInt32 else {
+            return HTTPResponse.badRequest("Expected JSON with displayId")
+        }
+
+        let displays = OutputManager.shared.getAvailableDisplays()
+        guard let display = displays.first(where: { $0.displayId == displayId }) else {
+            return HTTPResponse.error(404, "Display not found")
+        }
+
+        // Check if already exists
+        let existing = OutputManager.shared.getAllOutputs().first { $0.config.displayId == displayId }
+        if existing != nil {
+            return HTTPResponse.error(409, "Display output already exists")
+        }
+
+        if let id = OutputManager.shared.addDisplayOutput(displayId: displayId, name: display.name) {
+            OutputManager.shared.enableOutput(id: id, enabled: true)
+            return HTTPResponse.json(["success": true, "id": id.uuidString, "name": display.name])
+        }
+
+        return HTTPResponse.error(500, "Failed to add display output")
+    }
+
+    @MainActor
+    private func handleAddNDIOutput(request: HTTPRequest) -> HTTPResponse {
+        guard let json = try? JSONSerialization.jsonObject(with: request.body) as? [String: Any],
+              let name = json["name"] as? String else {
+            return HTTPResponse.badRequest("Expected JSON with name")
+        }
+
+        let sourceName = name.isEmpty ? "GeoDraw NDI" : name
+
+        if let id = OutputManager.shared.addNDIOutput(sourceName: sourceName) {
+            OutputManager.shared.enableOutput(id: id, enabled: true)
+            return HTTPResponse.json(["success": true, "id": id.uuidString, "name": sourceName])
+        }
+
+        return HTTPResponse.error(500, "Failed to add NDI output")
+    }
+
+    @MainActor
+    private func handleEnableOutput(id: UUID, enabled: Bool) -> HTTPResponse {
+        let outputs = OutputManager.shared.getAllOutputs()
+        guard outputs.contains(where: { $0.id == id }) else {
+            return HTTPResponse.error(404, "Output not found")
+        }
+
+        OutputManager.shared.enableOutput(id: id, enabled: enabled)
+        return HTTPResponse.json(["success": true, "id": id.uuidString, "enabled": enabled])
+    }
+
+    @MainActor
+    private func handleRemoveOutput(id: UUID) -> HTTPResponse {
+        let outputs = OutputManager.shared.getAllOutputs()
+        guard outputs.contains(where: { $0.id == id }) else {
+            return HTTPResponse.error(404, "Output not found")
+        }
+
+        OutputManager.shared.removeOutput(id: id)
+        return HTTPResponse.json(["success": true, "id": id.uuidString])
+    }
+
+    @MainActor
+    private func handleSetSyphon(enabled: Bool) -> HTTPResponse {
+        guard let renderView = sharedMetalRenderView else {
+            return HTTPResponse.error(500, "Render view not available")
+        }
+
+        renderView.syphonEnabled = enabled
+        return HTTPResponse.json(["success": true, "syphon": enabled])
     }
 
     // MARK: - Helpers
@@ -1253,6 +1416,156 @@ private let indexHTML = """
             border-radius: 4px;
         }
 
+        /* Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-default);
+            transition: 0.3s;
+            border-radius: 26px;
+        }
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 4px;
+            bottom: 3px;
+            background-color: var(--text-secondary);
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+        .toggle-switch input:checked + .toggle-slider {
+            background-color: rgba(0, 255, 255, 0.2);
+            border-color: var(--neon-cyan);
+        }
+        .toggle-switch input:checked + .toggle-slider:before {
+            transform: translateX(22px);
+            background-color: var(--neon-cyan);
+            box-shadow: 0 0 10px var(--neon-cyan);
+        }
+
+        /* Outputs List */
+        .outputs-list, .displays-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .output-item, .display-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-card);
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border-default);
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+        .output-item:hover, .display-item:hover {
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+        }
+        .output-item.enabled {
+            border-color: var(--neon-green);
+            box-shadow: 0 0 10px rgba(51, 255, 102, 0.3);
+        }
+        .output-item.disabled {
+            opacity: 0.6;
+        }
+        .output-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        .output-name {
+            font-weight: bold;
+            color: var(--text-primary);
+        }
+        .output-type {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+        .output-actions {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        .btn-success {
+            background: var(--neon-green);
+            color: black;
+            box-shadow: 0 0 10px rgba(51, 255, 102, 0.5);
+        }
+        .btn-warning {
+            background: var(--neon-orange);
+            color: white;
+            box-shadow: 0 0 10px rgba(255, 102, 0, 0.5);
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal-content {
+            background: var(--bg-panel);
+            border: 2px solid var(--neon-cyan);
+            border-radius: 8px;
+            padding: 1.5rem;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
+        }
+        .modal-content h3 {
+            color: var(--neon-cyan);
+            margin-bottom: 1rem;
+        }
+        .modal-content input {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--bg-input);
+            border: 1px solid var(--border-default);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-family: inherit;
+            margin-bottom: 1rem;
+        }
+        .modal-content input:focus {
+            outline: none;
+            border-color: var(--neon-cyan);
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+        }
+
         @media (max-width: 768px) {
             .status-grid { grid-template-columns: 1fr; }
             .gobo-grid { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); }
@@ -1264,6 +1577,7 @@ private let indexHTML = """
         <h1>GeoDraw - Web Control</h1>
         <nav>
             <button class="active" data-section="status">Status</button>
+            <button data-section="outputs">Outputs</button>
             <button data-section="gobos">Gobos</button>
             <button data-section="media">Media Slots</button>
             <button data-section="ndi">NDI Sources</button>
@@ -1295,6 +1609,39 @@ private let indexHTML = """
                     <img id="preview" src="/api/v1/status/preview" alt="Preview">
                 </div>
             </div>
+        </div>
+
+        <!-- Outputs Section -->
+        <div id="outputs" class="section">
+            <h2>Output Settings</h2>
+
+            <!-- Syphon Toggle -->
+            <div class="output-card" style="background:var(--bg-card);border:1px solid var(--neon-purple);border-radius:8px;padding:1rem;margin-bottom:1rem;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <span style="color:var(--neon-purple);font-weight:bold;">Syphon Output</span>
+                        <span style="color:var(--text-secondary);margin-left:0.5rem;font-size:0.85rem;">macOS texture sharing</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="syphonToggle" onchange="toggleSyphon(this.checked)">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Add Output Buttons -->
+            <div style="display:flex;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;">
+                <button class="btn btn-primary" onclick="showAddDisplayModal()">+ Add Display Output</button>
+                <button class="btn btn-primary" onclick="showAddNDIModal()">+ Add NDI Output</button>
+            </div>
+
+            <!-- Configured Outputs List -->
+            <h3 style="color:var(--neon-cyan);margin-bottom:0.5rem;">Configured Outputs</h3>
+            <div id="outputsList" class="outputs-list"></div>
+
+            <!-- Available Displays -->
+            <h3 style="color:var(--neon-orange);margin:1.5rem 0 0.5rem;">Available Displays</h3>
+            <div id="displaysList" class="displays-list"></div>
         </div>
 
         <!-- Gobos Section -->
@@ -1347,6 +1694,30 @@ private let indexHTML = """
             <div class="source-list" id="ndiSources"></div>
         </div>
     </main>
+
+    <!-- Add Display Modal -->
+    <div id="displayModal" class="modal-overlay" onclick="if(event.target===this)closeModals()">
+        <div class="modal-content">
+            <h3>Add Display Output</h3>
+            <p style="color:var(--text-secondary);margin-bottom:1rem;">Select a display from the Available Displays list below.</p>
+            <div class="modal-buttons">
+                <button class="btn btn-primary" onclick="closeModals()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add NDI Output Modal -->
+    <div id="ndiModal" class="modal-overlay" onclick="if(event.target===this)closeModals()">
+        <div class="modal-content">
+            <h3>Add NDI Output</h3>
+            <label style="color:var(--text-secondary);font-size:0.9rem;">NDI Source Name:</label>
+            <input type="text" id="ndiOutputName" placeholder="GeoDraw NDI" value="GeoDraw NDI">
+            <div class="modal-buttons">
+                <button class="btn" style="background:var(--bg-card);color:var(--text-secondary);" onclick="closeModals()">Cancel</button>
+                <button class="btn btn-success" onclick="addNDIOutput()">Add Output</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         // Navigation
@@ -1657,8 +2028,140 @@ private let indexHTML = """
             setTimeout(loadNDI, 1000);
         }
 
+        // Outputs
+        async function loadOutputs() {
+            try {
+                const res = await fetch('/api/v1/outputs');
+                const data = await res.json();
+
+                // Update Syphon toggle
+                document.getElementById('syphonToggle').checked = data.syphon;
+
+                // Render configured outputs
+                const list = document.getElementById('outputsList');
+                if (data.outputs.length === 0) {
+                    list.innerHTML = '<p style="color:var(--text-secondary);padding:0.5rem;">No outputs configured</p>';
+                } else {
+                    list.innerHTML = data.outputs.map(o => `
+                        <div class="output-item ${o.enabled ? 'enabled' : 'disabled'}">
+                            <div class="output-info">
+                                <span class="output-name">${o.name}</span>
+                                <span class="output-type">${o.type.toUpperCase()}${o.resolution ? ' - ' + o.resolution : ''}</span>
+                            </div>
+                            <div class="output-actions">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" ${o.enabled ? 'checked' : ''} onchange="toggleOutput('${o.id}', this.checked)">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <button class="btn btn-danger" onclick="removeOutput('${o.id}')" title="Remove">×</button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (e) { console.error('Outputs error:', e); }
+        }
+
+        async function loadDisplays() {
+            try {
+                const res = await fetch('/api/v1/displays');
+                const data = await res.json();
+
+                const list = document.getElementById('displaysList');
+                if (data.displays.length === 0) {
+                    list.innerHTML = '<p style="color:var(--text-secondary);padding:0.5rem;">No displays detected</p>';
+                } else {
+                    list.innerHTML = data.displays.map(d => `
+                        <div class="display-item">
+                            <div class="output-info">
+                                <span class="output-name">${d.name}${d.isMain ? ' (Main)' : ''}</span>
+                                <span class="output-type">${d.width}x${d.height} @ ${d.refreshRate}Hz</span>
+                            </div>
+                            <div class="output-actions">
+                                ${d.hasOutput
+                                    ? '<span style="color:var(--neon-green);">Output Added</span>'
+                                    : `<button class="btn btn-primary" onclick="addDisplayOutput(${d.displayId}, '${d.name}')">Add Output</button>`
+                                }
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (e) { console.error('Displays error:', e); }
+        }
+
+        async function toggleSyphon(enabled) {
+            try {
+                await fetch(`/api/v1/syphon/${enabled ? 'enable' : 'disable'}`, { method: 'PUT' });
+            } catch (e) { console.error('Syphon toggle error:', e); }
+        }
+
+        async function toggleOutput(id, enabled) {
+            try {
+                await fetch(`/api/v1/outputs/${id}/${enabled ? 'enable' : 'disable'}`, { method: 'PUT' });
+                loadOutputs();
+            } catch (e) { console.error('Output toggle error:', e); }
+        }
+
+        async function addDisplayOutput(displayId, name) {
+            try {
+                const res = await fetch('/api/v1/outputs/display', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ displayId: displayId })
+                });
+                if (res.ok) {
+                    loadOutputs();
+                    loadDisplays();
+                } else {
+                    const data = await res.json();
+                    alert(data.error || 'Failed to add display output');
+                }
+            } catch (e) { console.error('Add display error:', e); }
+        }
+
+        async function addNDIOutput() {
+            const name = document.getElementById('ndiOutputName').value || 'GeoDraw NDI';
+            try {
+                const res = await fetch('/api/v1/outputs/ndi', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: name })
+                });
+                if (res.ok) {
+                    closeModals();
+                    loadOutputs();
+                } else {
+                    const data = await res.json();
+                    alert(data.error || 'Failed to add NDI output');
+                }
+            } catch (e) { console.error('Add NDI error:', e); }
+        }
+
+        async function removeOutput(id) {
+            if (!confirm('Remove this output?')) return;
+            try {
+                await fetch(`/api/v1/outputs/${id}`, { method: 'DELETE' });
+                loadOutputs();
+                loadDisplays();
+            } catch (e) { console.error('Remove output error:', e); }
+        }
+
+        function showAddDisplayModal() {
+            document.getElementById('displayModal').classList.add('active');
+        }
+
+        function showAddNDIModal() {
+            document.getElementById('ndiModal').classList.add('active');
+            document.getElementById('ndiOutputName').value = 'GeoDraw NDI';
+        }
+
+        function closeModals() {
+            document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
+        }
+
         // Init
         updateStatus();
+        loadOutputs();
+        loadDisplays();
         loadGobos();
         loadSlots();
         loadNDI();
