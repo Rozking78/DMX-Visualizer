@@ -287,13 +287,6 @@ final class WebServer: @unchecked Sendable {
                 return handleRemoveOutput(id: uuid)
             }
         }
-        if path == "/syphon/enable" && method == "PUT" {
-            return handleSetSyphon(enabled: true)
-        }
-        if path == "/syphon/disable" && method == "PUT" {
-            return handleSetSyphon(enabled: false)
-        }
-
         return HTTPResponse.notFound()
     }
 
@@ -315,9 +308,7 @@ final class WebServer: @unchecked Sendable {
                 "width": canvasWidth > 0 ? canvasWidth : 1920,
                 "height": canvasHeight > 0 ? canvasHeight : 1080
             ],
-            "outputs": [
-                "syphon": sharedMetalRenderView?.syphonEnabled ?? false
-            ]
+            "outputCount": OutputManager.shared.getAllOutputs().count
         ]
 
         return HTTPResponse.json(status)
@@ -774,7 +765,6 @@ final class WebServer: @unchecked Sendable {
     @MainActor
     private func handleGetOutputs() -> HTTPResponse {
         let outputs = OutputManager.shared.getAllOutputs()
-        let syphonEnabled = sharedMetalRenderView?.syphonEnabled ?? false
 
         var outputList: [[String: Any]] = []
         for output in outputs {
@@ -787,14 +777,13 @@ final class WebServer: @unchecked Sendable {
             if output.type == .display {
                 info["displayId"] = output.config.displayId as Any
                 info["resolution"] = "\(output.width)x\(output.height)"
+            } else {
+                info["resolution"] = "\(output.width)x\(output.height)"
             }
             outputList.append(info)
         }
 
-        return HTTPResponse.json([
-            "outputs": outputList,
-            "syphon": syphonEnabled
-        ])
+        return HTTPResponse.json(["outputs": outputList])
     }
 
     @MainActor
@@ -882,16 +871,6 @@ final class WebServer: @unchecked Sendable {
 
         OutputManager.shared.removeOutput(id: id)
         return HTTPResponse.json(["success": true, "id": id.uuidString])
-    }
-
-    @MainActor
-    private func handleSetSyphon(enabled: Bool) -> HTTPResponse {
-        guard let renderView = sharedMetalRenderView else {
-            return HTTPResponse.error(500, "Render view not available")
-        }
-
-        renderView.syphonEnabled = enabled
-        return HTTPResponse.json(["success": true, "syphon": enabled])
     }
 
     // MARK: - Helpers
@@ -1601,8 +1580,8 @@ private let indexHTML = """
                         <span class="status-value" id="resolution">-</span>
                     </div>
                     <div class="status-item">
-                        <span>Syphon:</span>
-                        <span class="status-value" id="syphon">-</span>
+                        <span>Outputs:</span>
+                        <span class="status-value" id="outputCount">-</span>
                     </div>
                 </div>
                 <div class="preview-container">
@@ -1614,20 +1593,6 @@ private let indexHTML = """
         <!-- Outputs Section -->
         <div id="outputs" class="section">
             <h2>Output Settings</h2>
-
-            <!-- Syphon Toggle -->
-            <div class="output-card" style="background:var(--bg-card);border:1px solid var(--neon-purple);border-radius:8px;padding:1rem;margin-bottom:1rem;">
-                <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <div>
-                        <span style="color:var(--neon-purple);font-weight:bold;">Syphon Output</span>
-                        <span style="color:var(--text-secondary);margin-left:0.5rem;font-size:0.85rem;">macOS texture sharing</span>
-                    </div>
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="syphonToggle" onchange="toggleSyphon(this.checked)">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-            </div>
 
             <!-- Add Output Buttons -->
             <div style="display:flex;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;">
@@ -1738,7 +1703,7 @@ private let indexHTML = """
                 document.getElementById('version').textContent = data.version;
                 document.getElementById('fixtures').textContent = `${data.activeFixtures}/${data.fixtureCount} active`;
                 document.getElementById('resolution').textContent = `${data.resolution.width}x${data.resolution.height}`;
-                document.getElementById('syphon').textContent = data.outputs.syphon ? 'Enabled' : 'Disabled';
+                document.getElementById('outputCount').textContent = data.outputCount || 0;
             } catch (e) { console.error('Status error:', e); }
         }
 
@@ -2034,9 +1999,6 @@ private let indexHTML = """
                 const res = await fetch('/api/v1/outputs');
                 const data = await res.json();
 
-                // Update Syphon toggle
-                document.getElementById('syphonToggle').checked = data.syphon;
-
                 // Render configured outputs
                 const list = document.getElementById('outputsList');
                 if (data.outputs.length === 0) {
@@ -2086,12 +2048,6 @@ private let indexHTML = """
                     `).join('');
                 }
             } catch (e) { console.error('Displays error:', e); }
-        }
-
-        async function toggleSyphon(enabled) {
-            try {
-                await fetch(`/api/v1/syphon/${enabled ? 'enable' : 'disable'}`, { method: 'PUT' });
-            } catch (e) { console.error('Syphon toggle error:', e); }
         }
 
         async function toggleOutput(id, enabled) {

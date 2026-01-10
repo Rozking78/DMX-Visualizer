@@ -1,5 +1,5 @@
 // GeoDrawOutputManager.swift - Manages all output destinations for GeoDraw
-// Provides zero-latency output with display outputs, NDI, and Syphon support
+// Provides zero-latency output with display outputs and NDI support
 
 import Foundation
 @preconcurrency import Metal
@@ -254,9 +254,6 @@ final class OutputManager: @unchecked Sendable {
     private var device: MTLDevice?
     private var outputs: [UUID: ManagedOutput] = [:]
     private let outputQueue = DispatchQueue(label: "com.geodraw.outputmanager", qos: .userInteractive)
-
-    // Syphon is handled separately via existing SyphonMetalServer
-    private(set) var syphonEnabled = false
 
     // NDI network interface (empty = use same as DMX, or all interfaces)
     private(set) var ndiNetworkInterface: String = ""
@@ -793,13 +790,6 @@ final class OutputManager: @unchecked Sendable {
         for id in outputs.keys {
             setActiveCorner(id: id, corner: 0)
         }
-    }
-
-    // MARK: - Syphon Control (separate from OutputEngine)
-
-    func enableSyphon(_ enabled: Bool) {
-        syphonEnabled = enabled
-        // Actual Syphon control is handled in main.swift via existing SyphonMetalServer
     }
 
     // MARK: - Discovery

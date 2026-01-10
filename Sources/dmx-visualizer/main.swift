@@ -10,7 +10,6 @@ import AVFoundation
 import SwiftUI
 import Combine
 import UniformTypeIdentifiers
-import Syphon
 import OutputEngine
 
 // MARK: - App Version
@@ -2138,24 +2137,9 @@ final class MetalRenderView: MTKView {
     private var testPatternTextTexture: MTLTexture?
     private var lastTestPatternText: String = ""
 
-    // Syphon output
-    private var syphonServer: SyphonMetalServer?
-    var syphonEnabled: Bool = false {
-        didSet {
-            if syphonEnabled && syphonServer == nil {
-                syphonServer = SyphonMetalServer(name: "GeoDraw", device: renderer.device, options: nil)
-                print("Syphon: Server started - 'GeoDraw' at \(Int(canvasSize.width))x\(Int(canvasSize.height))")
-            } else if !syphonEnabled {
-                syphonServer?.stop()
-                syphonServer = nil
-                print("Syphon: Server stopped")
-            }
-            UserDefaults.standard.set(syphonEnabled, forKey: "syphonEnabled")
-        }
-    }
-
-    // Legacy NDI removed - OutputManager handles all NDI outputs now
-    // This flag kept for menu compatibility but doesn't control anything
+    // Legacy flags kept for compatibility but don't control anything
+    // All outputs now managed via OutputManager
+    var syphonEnabled: Bool = false  // Syphon removed - use NDI instead
     var ndiEnabled: Bool = false
 
     // Web server helper properties
@@ -2205,14 +2189,7 @@ final class MetalRenderView: MTKView {
         // Initialize OutputManager for display and async NDI outputs
         OutputManager.shared.setup(device: renderer.device)
 
-        // Restore Syphon/NDI state after init completes (didSet doesn't fire during init)
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            if UserDefaults.standard.bool(forKey: "syphonEnabled") {
-                self.syphonEnabled = true
-            }
-            // NDI is now handled by OutputManager, not this legacy flag
-        }
+        // NDI outputs are now handled by OutputManager (restored from saved config)
     }
 
     required init(coder: NSCoder) {
@@ -2824,9 +2801,9 @@ extension MetalRenderView: MTKViewDelegate {
             return
         }
 
-        // If Syphon or OutputManager has enabled outputs, render to offscreen texture at full canvas resolution
+        // If OutputManager has enabled outputs, render to offscreen texture at full canvas resolution
         let hasEnabledOutputs = !OutputManager.shared.getAllOutputs().filter { $0.config.enabled }.isEmpty
-        let needsOffscreen = (syphonEnabled || hasEnabledOutputs) && offscreenTexture != nil
+        let needsOffscreen = hasEnabledOutputs && offscreenTexture != nil
         if needsOffscreen {
             renderToOffscreen(commandBuffer: commandBuffer, time: now)
         }
@@ -2867,13 +2844,7 @@ extension MetalRenderView: MTKViewDelegate {
         // Apply all collected video playback states (after rendering collected them)
         VideoSlotManager.shared.applyCollectedStates()
 
-        // Publish offscreen texture to Syphon if enabled (full canvas resolution)
-        if syphonEnabled, let server = syphonServer, let offscreen = offscreenTexture {
-            let region = NSRect(x: 0, y: 0, width: offscreen.width, height: offscreen.height)
-            server.publishFrameTexture(offscreen, on: commandBuffer, imageRegion: region, flipped: false)
-        }
-
-        // Push frame to OutputManager (display outputs, async NDI)
+        // Push frame to OutputManager (display outputs, NDI)
         // This is non-blocking - display uses GPU→GPU path, NDI uses async queue
         if let offscreen = offscreenTexture {
             // Use absolute time (Unix epoch) for NDI sync - all outputs get same timecode
@@ -9106,10 +9077,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
 
         outputMenu.addItem(NSMenuItem.separator())
 
-        let syphonItem = NSMenuItem(title: "Syphon Output", action: #selector(toggleSyphon), keyEquivalent: "y")
-        syphonItem.target = self
-        outputMenu.addItem(syphonItem)
-
         let ndiItem = NSMenuItem(title: "NDI Output", action: #selector(toggleNDI), keyEquivalent: "n")
         ndiItem.keyEquivalentModifierMask = [.command, .shift]
         ndiItem.target = self
@@ -9257,12 +9224,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         alert.informativeText = "Gobos have been reloaded from:\n• DMX Visualizer/gobos\n• GoboCreator/Library"
         alert.alertStyle = .informational
         alert.runModal()
-    }
-
-    @objc private func toggleSyphon(_ sender: NSMenuItem) {
-        guard let renderView = metalRenderView else { return }
-        renderView.syphonEnabled.toggle()
-        sender.state = renderView.syphonEnabled ? .on : .off
     }
 
     @objc private func toggleNDI(_ sender: NSMenuItem) {
@@ -9468,9 +9429,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     }
 
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
-        if menuItem.action == #selector(toggleSyphon(_:)) {
-            menuItem.state = (metalRenderView?.syphonEnabled ?? false) ? .on : .off
-        } else if menuItem.action == #selector(toggleNDI(_:)) {
+        if menuItem.action == #selector(toggleNDI(_:)) {
             menuItem.state = (metalRenderView?.ndiEnabled ?? false) ? .on : .off
         } else if menuItem.action == #selector(toggleCanvasNDIMenu(_:)) {
             menuItem.state = CanvasNDIManager.shared.isEnabled ? .on : .off
@@ -9670,9 +9629,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
 
         7. OUTPUTS
            • Output → Configure Outputs
-           • 4 independent NDI outputs
+           • Multiple independent NDI outputs
            • Edge blending & warping per output
-           • Syphon output for local apps (⌘Y)
 
         8. SAVE YOUR WORK
            • File → Save Show (⌘S) - fixtures & patch
@@ -9711,9 +9669,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         ⌘R        Refresh NDI Sources
 
         OUTPUT
-        ⌘Y        Toggle Syphon Output
         ⇧⌘N       Toggle NDI Output
-        ⌘O        Configure Outputs
+        ⇧⌘O       Configure Outputs
 
         VIEW
         ⌘F        Toggle Full Screen

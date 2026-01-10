@@ -46,7 +46,6 @@ let package = Package(
                 .interoperabilityMode(.Cxx)
             ],
             linkerSettings: [
-                .unsafeFlags(["-F", ".", "-framework", "Syphon"]),
                 .linkedFramework("CoreGraphics"),
                 .linkedFramework("IOKit")
             ]
