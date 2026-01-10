@@ -287,6 +287,12 @@ final class WebServer: @unchecked Sendable {
                 return handleRemoveOutput(id: uuid)
             }
         }
+        if path.hasPrefix("/outputs/") && path.hasSuffix("/settings") && method == "PUT" {
+            let idStr = path.replacingOccurrences(of: "/outputs/", with: "").replacingOccurrences(of: "/settings", with: "")
+            if let uuid = UUID(uuidString: idStr) {
+                return handleUpdateOutputSettings(id: uuid, request: request)
+            }
+        }
         return HTTPResponse.notFound()
     }
 
@@ -768,17 +774,66 @@ final class WebServer: @unchecked Sendable {
 
         var outputList: [[String: Any]] = []
         for output in outputs {
+            let c = output.config
             var info: [String: Any] = [
                 "id": output.id.uuidString,
                 "name": output.name,
                 "type": output.type == .display ? "display" : "ndi",
-                "enabled": output.config.enabled
+                "enabled": c.enabled,
+                "resolution": "\(output.width)x\(output.height)",
+                // Position & Size
+                "position": [
+                    "x": c.positionX ?? 0,
+                    "y": c.positionY ?? 0,
+                    "w": c.positionW ?? Int(output.width),
+                    "h": c.positionH ?? Int(output.height)
+                ],
+                // Crop
+                "crop": [
+                    "x": c.cropX,
+                    "y": c.cropY,
+                    "width": c.cropWidth,
+                    "height": c.cropHeight
+                ],
+                // Edge Blend
+                "edgeBlend": [
+                    "left": c.edgeBlendLeft,
+                    "right": c.edgeBlendRight,
+                    "top": c.edgeBlendTop,
+                    "bottom": c.edgeBlendBottom,
+                    "gamma": c.edgeBlendGamma,
+                    "power": c.edgeBlendPower,
+                    "blackLevel": c.edgeBlendBlackLevel
+                ],
+                // Warp (8-point)
+                "warp": [
+                    "topLeft": ["x": c.warpTopLeftX, "y": c.warpTopLeftY],
+                    "topMiddle": ["x": c.warpTopMiddleX, "y": c.warpTopMiddleY],
+                    "topRight": ["x": c.warpTopRightX, "y": c.warpTopRightY],
+                    "middleLeft": ["x": c.warpMiddleLeftX, "y": c.warpMiddleLeftY],
+                    "middleRight": ["x": c.warpMiddleRightX, "y": c.warpMiddleRightY],
+                    "bottomLeft": ["x": c.warpBottomLeftX, "y": c.warpBottomLeftY],
+                    "bottomMiddle": ["x": c.warpBottomMiddleX, "y": c.warpBottomMiddleY],
+                    "bottomRight": ["x": c.warpBottomRightX, "y": c.warpBottomRightY],
+                    "curvature": c.warpCurvature
+                ],
+                // Lens Correction
+                "lens": [
+                    "k1": c.lensK1,
+                    "k2": c.lensK2,
+                    "centerX": c.lensCenterX,
+                    "centerY": c.lensCenterY
+                ],
+                // DMX Patch
+                "dmx": [
+                    "universe": c.dmxUniverse,
+                    "address": c.dmxAddress
+                ],
+                // Intensity
+                "intensity": c.outputIntensity
             ]
             if output.type == .display {
-                info["displayId"] = output.config.displayId as Any
-                info["resolution"] = "\(output.width)x\(output.height)"
-            } else {
-                info["resolution"] = "\(output.width)x\(output.height)"
+                info["displayId"] = c.displayId as Any
             }
             outputList.append(info)
         }
@@ -870,6 +925,103 @@ final class WebServer: @unchecked Sendable {
         }
 
         OutputManager.shared.removeOutput(id: id)
+        return HTTPResponse.json(["success": true, "id": id.uuidString])
+    }
+
+    @MainActor
+    private func handleUpdateOutputSettings(id: UUID, request: HTTPRequest) -> HTTPResponse {
+        let outputs = OutputManager.shared.getAllOutputs()
+        guard outputs.contains(where: { $0.id == id }) else {
+            return HTTPResponse.error(404, "Output not found")
+        }
+
+        guard let json = try? JSONSerialization.jsonObject(with: request.body) as? [String: Any] else {
+            return HTTPResponse.badRequest("Invalid JSON")
+        }
+
+        // Position & Size
+        if let position = json["position"] as? [String: Any] {
+            let x = position["x"] as? Int ?? 0
+            let y = position["y"] as? Int ?? 0
+            let w = position["w"] as? Int ?? 1920
+            let h = position["h"] as? Int ?? 1080
+            OutputManager.shared.updatePosition(id: id, x: x, y: y, w: w, h: h)
+        }
+
+        // Crop
+        if let crop = json["crop"] as? [String: Any] {
+            let x = (crop["x"] as? NSNumber)?.floatValue ?? 0
+            let y = (crop["y"] as? NSNumber)?.floatValue ?? 0
+            let width = (crop["width"] as? NSNumber)?.floatValue ?? 1
+            let height = (crop["height"] as? NSNumber)?.floatValue ?? 1
+            OutputManager.shared.updateCrop(id: id, x: x, y: y, width: width, height: height)
+        }
+
+        // Edge Blend
+        if let edge = json["edgeBlend"] as? [String: Any] {
+            let left = (edge["left"] as? NSNumber)?.floatValue ?? 0
+            let right = (edge["right"] as? NSNumber)?.floatValue ?? 0
+            let top = (edge["top"] as? NSNumber)?.floatValue ?? 0
+            let bottom = (edge["bottom"] as? NSNumber)?.floatValue ?? 0
+            let gamma = (edge["gamma"] as? NSNumber)?.floatValue ?? 2.2
+            let power = (edge["power"] as? NSNumber)?.floatValue ?? 1.0
+            let blackLevel = (edge["blackLevel"] as? NSNumber)?.floatValue ?? 0
+            OutputManager.shared.updateEdgeBlend(id: id, left: left, right: right, top: top, bottom: bottom,
+                                                  gamma: gamma, power: power, blackLevel: blackLevel)
+        }
+
+        // Warp (8-point)
+        if let warp = json["warp"] as? [String: Any] {
+            // Parse warp points
+            func getPoint(_ key: String) -> (Float, Float) {
+                if let pt = warp[key] as? [String: Any] {
+                    let x = (pt["x"] as? NSNumber)?.floatValue ?? 0
+                    let y = (pt["y"] as? NSNumber)?.floatValue ?? 0
+                    return (x, y)
+                }
+                return (0, 0)
+            }
+            let topLeft = getPoint("topLeft")
+            let topMiddle = getPoint("topMiddle")
+            let topRight = getPoint("topRight")
+            let middleLeft = getPoint("middleLeft")
+            let middleRight = getPoint("middleRight")
+            let bottomLeft = getPoint("bottomLeft")
+            let bottomMiddle = getPoint("bottomMiddle")
+            let bottomRight = getPoint("bottomRight")
+
+            OutputManager.shared.updateQuadWarp(id: id,
+                topLeftX: topLeft.0, topLeftY: topLeft.1,
+                topMiddleX: topMiddle.0, topMiddleY: topMiddle.1,
+                topRightX: topRight.0, topRightY: topRight.1,
+                middleLeftX: middleLeft.0, middleLeftY: middleLeft.1,
+                middleRightX: middleRight.0, middleRightY: middleRight.1,
+                bottomLeftX: bottomLeft.0, bottomLeftY: bottomLeft.1,
+                bottomMiddleX: bottomMiddle.0, bottomMiddleY: bottomMiddle.1,
+                bottomRightX: bottomRight.0, bottomRightY: bottomRight.1)
+        }
+
+        // Lens Correction
+        if let lens = json["lens"] as? [String: Any] {
+            let k1 = (lens["k1"] as? NSNumber)?.floatValue ?? 0
+            let k2 = (lens["k2"] as? NSNumber)?.floatValue ?? 0
+            let centerX = (lens["centerX"] as? NSNumber)?.floatValue ?? 0.5
+            let centerY = (lens["centerY"] as? NSNumber)?.floatValue ?? 0.5
+            OutputManager.shared.updateLensCorrection(id: id, k1: k1, k2: k2, centerX: centerX, centerY: centerY)
+        }
+
+        // DMX Patch
+        if let dmx = json["dmx"] as? [String: Any] {
+            let universe = dmx["universe"] as? Int ?? 0
+            let address = dmx["address"] as? Int ?? 1
+            OutputManager.shared.updateDMXPatch(id: id, universe: universe, address: address)
+        }
+
+        // Intensity
+        if let intensity = (json["intensity"] as? NSNumber)?.floatValue {
+            OutputManager.shared.updateOutputIntensity(id: id, intensity: intensity)
+        }
+
         return HTTPResponse.json(["success": true, "id": id.uuidString])
     }
 
@@ -1545,6 +1697,79 @@ private let indexHTML = """
             justify-content: flex-end;
         }
 
+        /* Settings Tabs */
+        .settings-tab {
+            padding: 0.4rem 0.8rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        .settings-tab:hover {
+            border-color: var(--neon-cyan);
+        }
+        .settings-tab.active {
+            background: var(--neon-cyan);
+            color: black;
+            border-color: var(--neon-cyan);
+        }
+        .settings-panel {
+            display: none;
+        }
+        .settings-panel.active {
+            display: block;
+        }
+        .settings-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+        }
+        .settings-row label {
+            min-width: 100px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        .settings-row input[type="number"] {
+            width: 80px;
+            padding: 0.4rem;
+            background: var(--bg-input);
+            border: 1px solid var(--border-default);
+            border-radius: 4px;
+            color: var(--text-primary);
+        }
+        .settings-row input[type="range"] {
+            flex: 1;
+            max-width: 200px;
+        }
+        .settings-row span {
+            min-width: 50px;
+            color: var(--neon-cyan);
+            font-size: 0.85rem;
+        }
+        .warp-point {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            padding: 0.5rem;
+            background: var(--bg-card);
+            border-radius: 4px;
+        }
+        .warp-point label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+        .warp-point input {
+            padding: 0.3rem;
+            background: var(--bg-input);
+            border: 1px solid var(--border-default);
+            border-radius: 3px;
+            color: var(--text-primary);
+            font-size: 0.85rem;
+        }
+
         @media (max-width: 768px) {
             .status-grid { grid-template-columns: 1fr; }
             .gobo-grid { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); }
@@ -1680,6 +1905,174 @@ private let indexHTML = """
             <div class="modal-buttons">
                 <button class="btn" style="background:var(--bg-card);color:var(--text-secondary);" onclick="closeModals()">Cancel</button>
                 <button class="btn btn-success" onclick="addNDIOutput()">Add Output</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Output Settings Modal -->
+    <div id="settingsModal" class="modal-overlay" onclick="if(event.target===this)closeModals()">
+        <div class="modal-content" style="max-width:600px;max-height:80vh;overflow-y:auto;">
+            <h3 id="settingsTitle">Output Settings</h3>
+            <input type="hidden" id="settingsOutputId">
+
+            <!-- Settings Tabs -->
+            <div style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;">
+                <button class="settings-tab active" onclick="showSettingsTab('position')">Position</button>
+                <button class="settings-tab" onclick="showSettingsTab('edgeblend')">Edge Blend</button>
+                <button class="settings-tab" onclick="showSettingsTab('warp')">Warp</button>
+                <button class="settings-tab" onclick="showSettingsTab('lens')">Lens</button>
+                <button class="settings-tab" onclick="showSettingsTab('dmx')">DMX</button>
+            </div>
+
+            <!-- Position Tab -->
+            <div id="tab-position" class="settings-panel active">
+                <div class="settings-row">
+                    <label>X Position</label>
+                    <input type="number" id="set-pos-x" value="0">
+                </div>
+                <div class="settings-row">
+                    <label>Y Position</label>
+                    <input type="number" id="set-pos-y" value="0">
+                </div>
+                <div class="settings-row">
+                    <label>Width</label>
+                    <input type="number" id="set-pos-w" value="1920">
+                </div>
+                <div class="settings-row">
+                    <label>Height</label>
+                    <input type="number" id="set-pos-h" value="1080">
+                </div>
+                <div class="settings-row">
+                    <label>Intensity</label>
+                    <input type="range" id="set-intensity" min="0" max="1" step="0.01" value="1">
+                    <span id="set-intensity-val">100%</span>
+                </div>
+            </div>
+
+            <!-- Edge Blend Tab -->
+            <div id="tab-edgeblend" class="settings-panel">
+                <div class="settings-row">
+                    <label>Left Blend</label>
+                    <input type="range" id="set-edge-left" min="0" max="500" value="0">
+                    <span id="set-edge-left-val">0px</span>
+                </div>
+                <div class="settings-row">
+                    <label>Right Blend</label>
+                    <input type="range" id="set-edge-right" min="0" max="500" value="0">
+                    <span id="set-edge-right-val">0px</span>
+                </div>
+                <div class="settings-row">
+                    <label>Top Blend</label>
+                    <input type="range" id="set-edge-top" min="0" max="500" value="0">
+                    <span id="set-edge-top-val">0px</span>
+                </div>
+                <div class="settings-row">
+                    <label>Bottom Blend</label>
+                    <input type="range" id="set-edge-bottom" min="0" max="500" value="0">
+                    <span id="set-edge-bottom-val">0px</span>
+                </div>
+                <div class="settings-row">
+                    <label>Gamma</label>
+                    <input type="range" id="set-edge-gamma" min="1" max="4" step="0.1" value="2.2">
+                    <span id="set-edge-gamma-val">2.2</span>
+                </div>
+            </div>
+
+            <!-- Warp Tab -->
+            <div id="tab-warp" class="settings-panel">
+                <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:1rem;">Adjust corner and edge points (pixels offset)</p>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem;">
+                    <div class="warp-point">
+                        <label>Top Left</label>
+                        <input type="number" id="set-warp-tl-x" placeholder="X" style="width:60px;">
+                        <input type="number" id="set-warp-tl-y" placeholder="Y" style="width:60px;">
+                    </div>
+                    <div class="warp-point">
+                        <label>Top Mid</label>
+                        <input type="number" id="set-warp-tm-x" placeholder="X" style="width:60px;">
+                        <input type="number" id="set-warp-tm-y" placeholder="Y" style="width:60px;">
+                    </div>
+                    <div class="warp-point">
+                        <label>Top Right</label>
+                        <input type="number" id="set-warp-tr-x" placeholder="X" style="width:60px;">
+                        <input type="number" id="set-warp-tr-y" placeholder="Y" style="width:60px;">
+                    </div>
+                    <div class="warp-point">
+                        <label>Mid Left</label>
+                        <input type="number" id="set-warp-ml-x" placeholder="X" style="width:60px;">
+                        <input type="number" id="set-warp-ml-y" placeholder="Y" style="width:60px;">
+                    </div>
+                    <div class="warp-point" style="visibility:hidden;"></div>
+                    <div class="warp-point">
+                        <label>Mid Right</label>
+                        <input type="number" id="set-warp-mr-x" placeholder="X" style="width:60px;">
+                        <input type="number" id="set-warp-mr-y" placeholder="Y" style="width:60px;">
+                    </div>
+                    <div class="warp-point">
+                        <label>Bot Left</label>
+                        <input type="number" id="set-warp-bl-x" placeholder="X" style="width:60px;">
+                        <input type="number" id="set-warp-bl-y" placeholder="Y" style="width:60px;">
+                    </div>
+                    <div class="warp-point">
+                        <label>Bot Mid</label>
+                        <input type="number" id="set-warp-bm-x" placeholder="X" style="width:60px;">
+                        <input type="number" id="set-warp-bm-y" placeholder="Y" style="width:60px;">
+                    </div>
+                    <div class="warp-point">
+                        <label>Bot Right</label>
+                        <input type="number" id="set-warp-br-x" placeholder="X" style="width:60px;">
+                        <input type="number" id="set-warp-br-y" placeholder="Y" style="width:60px;">
+                    </div>
+                </div>
+                <div class="settings-row" style="margin-top:1rem;">
+                    <label>Curvature</label>
+                    <input type="range" id="set-warp-curve" min="-1" max="1" step="0.01" value="0">
+                    <span id="set-warp-curve-val">0</span>
+                </div>
+            </div>
+
+            <!-- Lens Tab -->
+            <div id="tab-lens" class="settings-panel">
+                <div class="settings-row">
+                    <label>K1 (Primary)</label>
+                    <input type="range" id="set-lens-k1" min="-0.5" max="0.5" step="0.01" value="0">
+                    <span id="set-lens-k1-val">0</span>
+                </div>
+                <div class="settings-row">
+                    <label>K2 (Secondary)</label>
+                    <input type="range" id="set-lens-k2" min="-0.5" max="0.5" step="0.01" value="0">
+                    <span id="set-lens-k2-val">0</span>
+                </div>
+                <div class="settings-row">
+                    <label>Center X</label>
+                    <input type="range" id="set-lens-cx" min="0" max="1" step="0.01" value="0.5">
+                    <span id="set-lens-cx-val">0.5</span>
+                </div>
+                <div class="settings-row">
+                    <label>Center Y</label>
+                    <input type="range" id="set-lens-cy" min="0" max="1" step="0.01" value="0.5">
+                    <span id="set-lens-cy-val">0.5</span>
+                </div>
+            </div>
+
+            <!-- DMX Tab -->
+            <div id="tab-dmx" class="settings-panel">
+                <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:1rem;">Control output via DMX (27 channels)</p>
+                <div class="settings-row">
+                    <label>Universe</label>
+                    <input type="number" id="set-dmx-universe" min="0" max="64" value="0">
+                    <span style="color:var(--text-secondary);font-size:0.8rem;">0 = disabled</span>
+                </div>
+                <div class="settings-row">
+                    <label>Address</label>
+                    <input type="number" id="set-dmx-address" min="1" max="512" value="1">
+                </div>
+            </div>
+
+            <div class="modal-buttons" style="margin-top:1.5rem;">
+                <button class="btn" style="background:var(--bg-card);color:var(--text-secondary);" onclick="closeModals()">Cancel</button>
+                <button class="btn" style="background:var(--neon-orange);" onclick="resetOutputSettings()">Reset</button>
+                <button class="btn btn-success" onclick="saveOutputSettings()">Save</button>
             </div>
         </div>
     </div>
@@ -1994,10 +2387,13 @@ private let indexHTML = """
         }
 
         // Outputs
+        let outputsData = [];
+
         async function loadOutputs() {
             try {
                 const res = await fetch('/api/v1/outputs');
                 const data = await res.json();
+                outputsData = data.outputs;
 
                 // Render configured outputs
                 const list = document.getElementById('outputsList');
@@ -2008,9 +2404,10 @@ private let indexHTML = """
                         <div class="output-item ${o.enabled ? 'enabled' : 'disabled'}">
                             <div class="output-info">
                                 <span class="output-name">${o.name}</span>
-                                <span class="output-type">${o.type.toUpperCase()}${o.resolution ? ' - ' + o.resolution : ''}</span>
+                                <span class="output-type">${o.type.toUpperCase()} - ${o.resolution}</span>
                             </div>
                             <div class="output-actions">
+                                <button class="btn" style="background:var(--neon-purple);padding:0.3rem 0.6rem;font-size:0.8rem;" onclick="openOutputSettings('${o.id}')" title="Settings">Settings</button>
                                 <label class="toggle-switch">
                                     <input type="checkbox" ${o.enabled ? 'checked' : ''} onchange="toggleOutput('${o.id}', this.checked)">
                                     <span class="toggle-slider"></span>
@@ -2113,6 +2510,204 @@ private let indexHTML = """
         function closeModals() {
             document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
         }
+
+        // Output Settings
+        function showSettingsTab(tab) {
+            document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('tab-' + tab).classList.add('active');
+        }
+
+        function openOutputSettings(id) {
+            const output = outputsData.find(o => o.id === id);
+            if (!output) return;
+
+            document.getElementById('settingsOutputId').value = id;
+            document.getElementById('settingsTitle').textContent = output.name + ' Settings';
+
+            // Position
+            document.getElementById('set-pos-x').value = output.position?.x || 0;
+            document.getElementById('set-pos-y').value = output.position?.y || 0;
+            document.getElementById('set-pos-w').value = output.position?.w || 1920;
+            document.getElementById('set-pos-h').value = output.position?.h || 1080;
+            const intensity = output.intensity || 1;
+            document.getElementById('set-intensity').value = intensity;
+            document.getElementById('set-intensity-val').textContent = Math.round(intensity * 100) + '%';
+
+            // Edge Blend
+            const edge = output.edgeBlend || {};
+            document.getElementById('set-edge-left').value = edge.left || 0;
+            document.getElementById('set-edge-left-val').textContent = Math.round(edge.left || 0) + 'px';
+            document.getElementById('set-edge-right').value = edge.right || 0;
+            document.getElementById('set-edge-right-val').textContent = Math.round(edge.right || 0) + 'px';
+            document.getElementById('set-edge-top').value = edge.top || 0;
+            document.getElementById('set-edge-top-val').textContent = Math.round(edge.top || 0) + 'px';
+            document.getElementById('set-edge-bottom').value = edge.bottom || 0;
+            document.getElementById('set-edge-bottom-val').textContent = Math.round(edge.bottom || 0) + 'px';
+            document.getElementById('set-edge-gamma').value = edge.gamma || 2.2;
+            document.getElementById('set-edge-gamma-val').textContent = (edge.gamma || 2.2).toFixed(1);
+
+            // Warp
+            const warp = output.warp || {};
+            document.getElementById('set-warp-tl-x').value = warp.topLeft?.x || 0;
+            document.getElementById('set-warp-tl-y').value = warp.topLeft?.y || 0;
+            document.getElementById('set-warp-tm-x').value = warp.topMiddle?.x || 0;
+            document.getElementById('set-warp-tm-y').value = warp.topMiddle?.y || 0;
+            document.getElementById('set-warp-tr-x').value = warp.topRight?.x || 0;
+            document.getElementById('set-warp-tr-y').value = warp.topRight?.y || 0;
+            document.getElementById('set-warp-ml-x').value = warp.middleLeft?.x || 0;
+            document.getElementById('set-warp-ml-y').value = warp.middleLeft?.y || 0;
+            document.getElementById('set-warp-mr-x').value = warp.middleRight?.x || 0;
+            document.getElementById('set-warp-mr-y').value = warp.middleRight?.y || 0;
+            document.getElementById('set-warp-bl-x').value = warp.bottomLeft?.x || 0;
+            document.getElementById('set-warp-bl-y').value = warp.bottomLeft?.y || 0;
+            document.getElementById('set-warp-bm-x').value = warp.bottomMiddle?.x || 0;
+            document.getElementById('set-warp-bm-y').value = warp.bottomMiddle?.y || 0;
+            document.getElementById('set-warp-br-x').value = warp.bottomRight?.x || 0;
+            document.getElementById('set-warp-br-y').value = warp.bottomRight?.y || 0;
+            document.getElementById('set-warp-curve').value = warp.curvature || 0;
+            document.getElementById('set-warp-curve-val').textContent = (warp.curvature || 0).toFixed(2);
+
+            // Lens
+            const lens = output.lens || {};
+            document.getElementById('set-lens-k1').value = lens.k1 || 0;
+            document.getElementById('set-lens-k1-val').textContent = (lens.k1 || 0).toFixed(2);
+            document.getElementById('set-lens-k2').value = lens.k2 || 0;
+            document.getElementById('set-lens-k2-val').textContent = (lens.k2 || 0).toFixed(2);
+            document.getElementById('set-lens-cx').value = lens.centerX || 0.5;
+            document.getElementById('set-lens-cx-val').textContent = (lens.centerX || 0.5).toFixed(2);
+            document.getElementById('set-lens-cy').value = lens.centerY || 0.5;
+            document.getElementById('set-lens-cy-val').textContent = (lens.centerY || 0.5).toFixed(2);
+
+            // DMX
+            const dmx = output.dmx || {};
+            document.getElementById('set-dmx-universe').value = dmx.universe || 0;
+            document.getElementById('set-dmx-address').value = dmx.address || 1;
+
+            // Reset to first tab
+            document.querySelectorAll('.settings-tab').forEach((t, i) => t.classList.toggle('active', i === 0));
+            document.querySelectorAll('.settings-panel').forEach((p, i) => p.classList.toggle('active', i === 0));
+
+            document.getElementById('settingsModal').classList.add('active');
+        }
+
+        async function saveOutputSettings() {
+            const id = document.getElementById('settingsOutputId').value;
+            const settings = {
+                position: {
+                    x: parseInt(document.getElementById('set-pos-x').value) || 0,
+                    y: parseInt(document.getElementById('set-pos-y').value) || 0,
+                    w: parseInt(document.getElementById('set-pos-w').value) || 1920,
+                    h: parseInt(document.getElementById('set-pos-h').value) || 1080
+                },
+                intensity: parseFloat(document.getElementById('set-intensity').value) || 1,
+                edgeBlend: {
+                    left: parseFloat(document.getElementById('set-edge-left').value) || 0,
+                    right: parseFloat(document.getElementById('set-edge-right').value) || 0,
+                    top: parseFloat(document.getElementById('set-edge-top').value) || 0,
+                    bottom: parseFloat(document.getElementById('set-edge-bottom').value) || 0,
+                    gamma: parseFloat(document.getElementById('set-edge-gamma').value) || 2.2
+                },
+                warp: {
+                    topLeft: { x: parseFloat(document.getElementById('set-warp-tl-x').value) || 0, y: parseFloat(document.getElementById('set-warp-tl-y').value) || 0 },
+                    topMiddle: { x: parseFloat(document.getElementById('set-warp-tm-x').value) || 0, y: parseFloat(document.getElementById('set-warp-tm-y').value) || 0 },
+                    topRight: { x: parseFloat(document.getElementById('set-warp-tr-x').value) || 0, y: parseFloat(document.getElementById('set-warp-tr-y').value) || 0 },
+                    middleLeft: { x: parseFloat(document.getElementById('set-warp-ml-x').value) || 0, y: parseFloat(document.getElementById('set-warp-ml-y').value) || 0 },
+                    middleRight: { x: parseFloat(document.getElementById('set-warp-mr-x').value) || 0, y: parseFloat(document.getElementById('set-warp-mr-y').value) || 0 },
+                    bottomLeft: { x: parseFloat(document.getElementById('set-warp-bl-x').value) || 0, y: parseFloat(document.getElementById('set-warp-bl-y').value) || 0 },
+                    bottomMiddle: { x: parseFloat(document.getElementById('set-warp-bm-x').value) || 0, y: parseFloat(document.getElementById('set-warp-bm-y').value) || 0 },
+                    bottomRight: { x: parseFloat(document.getElementById('set-warp-br-x').value) || 0, y: parseFloat(document.getElementById('set-warp-br-y').value) || 0 },
+                    curvature: parseFloat(document.getElementById('set-warp-curve').value) || 0
+                },
+                lens: {
+                    k1: parseFloat(document.getElementById('set-lens-k1').value) || 0,
+                    k2: parseFloat(document.getElementById('set-lens-k2').value) || 0,
+                    centerX: parseFloat(document.getElementById('set-lens-cx').value) || 0.5,
+                    centerY: parseFloat(document.getElementById('set-lens-cy').value) || 0.5
+                },
+                dmx: {
+                    universe: parseInt(document.getElementById('set-dmx-universe').value) || 0,
+                    address: parseInt(document.getElementById('set-dmx-address').value) || 1
+                }
+            };
+
+            try {
+                const res = await fetch(`/api/v1/outputs/${id}/settings`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                });
+                if (res.ok) {
+                    closeModals();
+                    loadOutputs();
+                } else {
+                    const err = await res.json();
+                    alert(err.error || 'Failed to save settings');
+                }
+            } catch (e) {
+                console.error('Save settings error:', e);
+                alert('Failed to save settings');
+            }
+        }
+
+        function resetOutputSettings() {
+            if (!confirm('Reset all settings for this output to defaults?')) return;
+            // Reset position
+            document.getElementById('set-pos-x').value = 0;
+            document.getElementById('set-pos-y').value = 0;
+            document.getElementById('set-pos-w').value = 1920;
+            document.getElementById('set-pos-h').value = 1080;
+            document.getElementById('set-intensity').value = 1;
+            document.getElementById('set-intensity-val').textContent = '100%';
+            // Reset edge blend
+            ['left', 'right', 'top', 'bottom'].forEach(s => {
+                document.getElementById('set-edge-' + s).value = 0;
+                document.getElementById('set-edge-' + s + '-val').textContent = '0px';
+            });
+            document.getElementById('set-edge-gamma').value = 2.2;
+            document.getElementById('set-edge-gamma-val').textContent = '2.2';
+            // Reset warp
+            ['tl', 'tm', 'tr', 'ml', 'mr', 'bl', 'bm', 'br'].forEach(p => {
+                document.getElementById('set-warp-' + p + '-x').value = 0;
+                document.getElementById('set-warp-' + p + '-y').value = 0;
+            });
+            document.getElementById('set-warp-curve').value = 0;
+            document.getElementById('set-warp-curve-val').textContent = '0';
+            // Reset lens
+            document.getElementById('set-lens-k1').value = 0;
+            document.getElementById('set-lens-k1-val').textContent = '0';
+            document.getElementById('set-lens-k2').value = 0;
+            document.getElementById('set-lens-k2-val').textContent = '0';
+            document.getElementById('set-lens-cx').value = 0.5;
+            document.getElementById('set-lens-cx-val').textContent = '0.5';
+            document.getElementById('set-lens-cy').value = 0.5;
+            document.getElementById('set-lens-cy-val').textContent = '0.5';
+            // Reset DMX
+            document.getElementById('set-dmx-universe').value = 0;
+            document.getElementById('set-dmx-address').value = 1;
+        }
+
+        // Range input live updates
+        document.getElementById('set-intensity').addEventListener('input', e => {
+            document.getElementById('set-intensity-val').textContent = Math.round(e.target.value * 100) + '%';
+        });
+        ['left', 'right', 'top', 'bottom'].forEach(s => {
+            document.getElementById('set-edge-' + s).addEventListener('input', e => {
+                document.getElementById('set-edge-' + s + '-val').textContent = Math.round(e.target.value) + 'px';
+            });
+        });
+        document.getElementById('set-edge-gamma').addEventListener('input', e => {
+            document.getElementById('set-edge-gamma-val').textContent = parseFloat(e.target.value).toFixed(1);
+        });
+        document.getElementById('set-warp-curve').addEventListener('input', e => {
+            document.getElementById('set-warp-curve-val').textContent = parseFloat(e.target.value).toFixed(2);
+        });
+        ['k1', 'k2', 'cx', 'cy'].forEach(s => {
+            document.getElementById('set-lens-' + s).addEventListener('input', e => {
+                document.getElementById('set-lens-' + s + '-val').textContent = parseFloat(e.target.value).toFixed(2);
+            });
+        });
 
         // Init
         updateStatus();
