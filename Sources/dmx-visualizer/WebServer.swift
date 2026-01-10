@@ -10,7 +10,7 @@ final class WebServer: @unchecked Sendable {
     @MainActor static let shared = WebServer()
 
     private var listener: NWListener?
-    private let port: UInt16 = 8080
+    private let port: UInt16 = 8082
     private let queue = DispatchQueue(label: "com.geodraw.webserver", qos: .userInitiated)
     private var isRunning = false
 
@@ -59,20 +59,67 @@ final class WebServer: @unchecked Sendable {
     }
 
     private func handleConnection(_ connection: NWConnection) {
+        NSLog("WebServer: New connection")
         connection.start(queue: queue)
+        receiveData(connection: connection, accumulated: Data())
+    }
 
-        connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, isComplete, error in
-            if let data = data, !data.isEmpty {
-                self?.processRequest(data: data, connection: connection)
+    private func receiveData(connection: NWConnection, accumulated: Data) {
+        // Read in chunks, max 100MB total
+        let maxSize = 100 * 1024 * 1024
+
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 1024 * 1024) { [weak self] data, _, isComplete, error in
+            if let error = error {
+                NSLog("WebServer: Receive error - %@", error.localizedDescription)
             }
-            if isComplete || error != nil {
-                connection.cancel()
+            var newData = accumulated
+            if let data = data {
+                newData.append(data)
+                NSLog("WebServer: Received chunk %d bytes (total: %d)", data.count, newData.count)
+            }
+
+            // Check if we have complete headers and can determine content length
+            if let headerEnd = newData.range(of: Data("\r\n\r\n".utf8)) {
+                let headerData = newData.subdata(in: newData.startIndex..<headerEnd.lowerBound)
+                if let headerStr = String(data: headerData, encoding: .utf8) {
+                    // Parse content-length
+                    var contentLength = 0
+                    for line in headerStr.components(separatedBy: "\r\n") {
+                        if line.lowercased().hasPrefix("content-length:") {
+                            let value = line.components(separatedBy: ":").dropFirst().joined().trimmingCharacters(in: .whitespaces)
+                            contentLength = Int(value) ?? 0
+                            break
+                        }
+                    }
+
+                    let bodyStart = headerEnd.upperBound
+                    let bodyLength = newData.count - newData.distance(from: newData.startIndex, to: bodyStart)
+                    let expectedTotal = newData.distance(from: newData.startIndex, to: bodyStart) + contentLength
+
+                    // If we have all the data or hit max size, process it
+                    if bodyLength >= contentLength || newData.count >= maxSize || isComplete {
+                        self?.processRequest(data: newData, connection: connection)
+                        return
+                    }
+                }
+            }
+
+            // Keep reading if not complete and under max size
+            if !isComplete && error == nil && newData.count < maxSize {
+                self?.receiveData(connection: connection, accumulated: newData)
+            } else {
+                // Process whatever we have
+                self?.processRequest(data: newData, connection: connection)
             }
         }
     }
 
     private func processRequest(data: Data, connection: NWConnection) {
+        NSLog("WebServer: processRequest with %d bytes", data.count)
         guard let request = HTTPRequest.parse(data: data) else {
+            NSLog("WebServer: Failed to parse HTTP request")
+            let preview = String(data: data.prefix(500), encoding: .utf8) ?? "binary data"
+            NSLog("WebServer: Request preview: %@", preview)
             sendResponse(HTTPResponse.badRequest(), connection: connection)
             return
         }
@@ -100,6 +147,8 @@ final class WebServer: @unchecked Sendable {
     private func route(request: HTTPRequest) async -> HTTPResponse {
         let path = request.path
         let method = request.method
+
+        NSLog("WebServer: %@ %@ (body: %d bytes)", method, path, request.body.count)
 
         // CORS preflight
         if method == "OPTIONS" {
@@ -156,6 +205,17 @@ final class WebServer: @unchecked Sendable {
             let idStr = path.replacingOccurrences(of: "/gobos/", with: "")
             if let id = Int(idStr) {
                 return handleDeleteGobo(id: id)
+            }
+        }
+        // Move/reorder gobo: PUT /gobos/{fromId}/move/{toId}
+        if path.hasPrefix("/gobos/") && path.contains("/move/") && method == "PUT" {
+            let regex = try? NSRegularExpression(pattern: #"/gobos/(\d+)/move/(\d+)"#)
+            if let match = regex?.firstMatch(in: path, range: NSRange(path.startIndex..., in: path)),
+               let fromRange = Range(match.range(at: 1), in: path),
+               let toRange = Range(match.range(at: 2), in: path),
+               let fromId = Int(path[fromRange]),
+               let toId = Int(path[toRange]) {
+                return handleMoveGobo(fromId: fromId, toId: toId)
             }
         }
 
@@ -250,6 +310,9 @@ final class WebServer: @unchecked Sendable {
 
     @MainActor
     private func handleGetGobos() -> HTTPResponse {
+        // Refresh gobo library to pick up any new files
+        GoboLibrary.shared.refreshGobos()
+
         var gobos: [[String: Any]] = []
 
         for id in 21...200 {
@@ -304,16 +367,24 @@ final class WebServer: @unchecked Sendable {
             return HTTPResponse.badRequest("No file uploaded")
         }
 
-        // Find next available slot ID
+        // Check for slot parameter in form data
         var slotId = 21
-        for id in 21...50 {
-            if GoboLibrary.shared.image(for: id) == nil {
-                slotId = id
-                break
+        if let slotPart = parts.first(where: { $0.name == "slot" }),
+           let slotStr = String(data: slotPart.data, encoding: .utf8),
+           let requestedSlot = Int(slotStr.trimmingCharacters(in: .whitespacesAndNewlines)),
+           requestedSlot >= 21 && requestedSlot <= 200 {
+            slotId = requestedSlot
+        } else {
+            // Find next available slot if not specified
+            for id in 21...200 {
+                if GoboLibrary.shared.image(for: id) == nil {
+                    slotId = id
+                    break
+                }
             }
         }
 
-        // Generate filename
+        // Generate filename with slot number
         let safeName = filePart.filename?
             .replacingOccurrences(of: " ", with: "_")
             .replacingOccurrences(of: ".png", with: "") ?? "custom"
@@ -325,42 +396,134 @@ final class WebServer: @unchecked Sendable {
         let fileURL = uploadFolder.appendingPathComponent(filename)
 
         do {
+            NSLog("WebServer: Saving gobo to %@", fileURL.path)
             try filePart.data.write(to: fileURL)
+            NSLog("WebServer: Gobo saved successfully, refreshing library")
 
-            // GoboFileWatcher will detect and reload
+            // Refresh gobo library to pick up new file (already on MainActor)
+            GoboLibrary.shared.refreshGobos()
+
             return HTTPResponse.json([
                 "success": true,
-                "id": slotId,
+                "slot": slotId,
                 "filename": filename,
                 "path": fileURL.path
             ])
         } catch {
+            NSLog("WebServer: Failed to save gobo: %@", error.localizedDescription)
             return HTTPResponse.error(500, "Failed to save file: \(error.localizedDescription)")
         }
     }
 
     @MainActor
     private func handleDeleteGobo(id: Int) -> HTTPResponse {
-        // Find the gobo file
-        guard let def = GoboLibrary.shared.definition(for: id) else {
-            return HTTPResponse.notFound()
-        }
+        // Search all gobo folders for files matching this ID
+        let prefix = "gobo_\(String(format: "%03d", id))_"
+        var deletedCount = 0
 
-        // Try to find and delete the file
-        let uploadFolder = getGoboUploadFolder()
-        let filename = "gobo_\(String(format: "%03d", id))_\(def.name.lowercased().replacingOccurrences(of: " ", with: "_")).png"
-        let fileURL = uploadFolder.appendingPathComponent(filename)
+        for folder in [getGoboUploadFolder(), FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Documents/GoboCreator/Library")] {
+            guard let files = try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil) else { continue }
 
-        if FileManager.default.fileExists(atPath: fileURL.path) {
-            do {
-                try FileManager.default.removeItem(at: fileURL)
-                return HTTPResponse.json(["success": true, "id": id])
-            } catch {
-                return HTTPResponse.error(500, "Failed to delete: \(error.localizedDescription)")
+            for file in files {
+                if file.lastPathComponent.hasPrefix(prefix) && file.pathExtension.lowercased() == "png" {
+                    do {
+                        try FileManager.default.removeItem(at: file)
+                        deletedCount += 1
+                        NSLog("WebServer: Deleted gobo file: %@", file.lastPathComponent)
+                    } catch {
+                        NSLog("WebServer: Failed to delete %@: %@", file.path, error.localizedDescription)
+                    }
+                }
             }
         }
 
-        return HTTPResponse.notFound()
+        if deletedCount > 0 {
+            GoboLibrary.shared.refreshGobos()
+            return HTTPResponse.json(["success": true, "id": id, "deletedFiles": deletedCount])
+        }
+
+        return HTTPResponse.error(404, "No gobo files found for slot \(id)")
+    }
+
+    @MainActor
+    private func handleMoveGobo(fromId: Int, toId: Int) -> HTTPResponse {
+        guard fromId >= 21 && fromId <= 200 && toId >= 21 && toId <= 200 else {
+            return HTTPResponse.badRequest("Invalid slot IDs (must be 21-200)")
+        }
+
+        NSLog("WebServer: Moving gobo from slot %d to slot %d", fromId, toId)
+
+        // Find the source gobo file
+        let fromPrefix = "gobo_\(String(format: "%03d", fromId))_"
+        let toPrefix = "gobo_\(String(format: "%03d", toId))_"
+
+        var fromFile: URL? = nil
+        var toFile: URL? = nil
+        let folders = [getGoboUploadFolder(), FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Documents/GoboCreator/Library")]
+
+        // Find source and target files
+        for folder in folders {
+            guard let files = try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil) else { continue }
+            for file in files where file.pathExtension.lowercased() == "png" {
+                if file.lastPathComponent.hasPrefix(fromPrefix) { fromFile = file }
+                if file.lastPathComponent.hasPrefix(toPrefix) { toFile = file }
+            }
+        }
+
+        guard let sourceFile = fromFile else {
+            return HTTPResponse.error(404, "Source gobo not found for slot \(fromId)")
+        }
+
+        let fm = FileManager.default
+        let tempDir = fm.temporaryDirectory
+
+        do {
+            // Get the descriptive part of filenames (after gobo_XXX_)
+            let sourceName = sourceFile.lastPathComponent
+                .replacingOccurrences(of: fromPrefix, with: "")
+
+            // If target slot has a file, we need to swap
+            if let targetFile = toFile {
+                let targetName = targetFile.lastPathComponent
+                    .replacingOccurrences(of: toPrefix, with: "")
+
+                // Move target to temp
+                let tempFile = tempDir.appendingPathComponent("gobo_temp_\(UUID().uuidString).png")
+                try fm.moveItem(at: targetFile, to: tempFile)
+
+                // Move source to target slot (same folder as source was in)
+                let newSourcePath = sourceFile.deletingLastPathComponent()
+                    .appendingPathComponent("gobo_\(String(format: "%03d", toId))_\(sourceName)")
+                try fm.moveItem(at: sourceFile, to: newSourcePath)
+
+                // Move temp (old target) to source slot
+                let newTargetPath = sourceFile.deletingLastPathComponent()
+                    .appendingPathComponent("gobo_\(String(format: "%03d", fromId))_\(targetName)")
+                try fm.moveItem(at: tempFile, to: newTargetPath)
+
+                NSLog("WebServer: Swapped gobo %d <-> %d", fromId, toId)
+            } else {
+                // Just move source to empty target slot
+                let newPath = sourceFile.deletingLastPathComponent()
+                    .appendingPathComponent("gobo_\(String(format: "%03d", toId))_\(sourceName)")
+                try fm.moveItem(at: sourceFile, to: newPath)
+
+                NSLog("WebServer: Moved gobo %d -> %d", fromId, toId)
+            }
+
+            // Refresh gobo library
+            GoboLibrary.shared.refreshGobos()
+
+            return HTTPResponse.json([
+                "success": true,
+                "from": fromId,
+                "to": toId,
+                "swapped": toFile != nil
+            ])
+        } catch {
+            NSLog("WebServer: Failed to move gobo: %@", error.localizedDescription)
+            return HTTPResponse.error(500, "Failed to move gobo: \(error.localizedDescription)")
+        }
     }
 
     // MARK: - Media Slot Handlers
@@ -448,16 +611,24 @@ final class WebServer: @unchecked Sendable {
     }
 
     private func handleVideoUpload(request: HTTPRequest) -> HTTPResponse {
+        NSLog("WebServer: handleVideoUpload called")
         guard let contentType = request.headers["content-type"],
               contentType.contains("multipart/form-data"),
               let boundary = extractBoundary(from: contentType) else {
+            NSLog("WebServer: Video upload - missing content-type or boundary")
+            NSLog("WebServer: Headers: %@", request.headers.description)
             return HTTPResponse.badRequest("Expected multipart/form-data")
         }
+
+        NSLog("WebServer: Video upload - body size: %d bytes, boundary: %@", request.body.count, boundary)
 
         guard let parts = parseMultipart(data: request.body, boundary: boundary),
               let filePart = parts.first(where: { $0.filename != nil }),
               let filename = filePart.filename else {
-            return HTTPResponse.badRequest("No file uploaded")
+            NSLog("WebServer: Video upload - failed to parse multipart or no file found")
+            let preview = String(data: request.body.prefix(500), encoding: .utf8) ?? "binary"
+            NSLog("WebServer: Body preview: %@", preview)
+            return HTTPResponse.badRequest("No file uploaded - body size: \(request.body.count)")
         }
 
         let videosFolder = getVideosFolder()
@@ -532,9 +703,13 @@ struct HTTPRequest {
     let body: Data
 
     static func parse(data: Data) -> HTTPRequest? {
-        guard let str = String(data: data, encoding: .utf8) else { return nil }
+        // Find header/body separator - binary body may not be valid UTF-8
+        guard let headerEnd = data.range(of: Data("\r\n\r\n".utf8)) else { return nil }
 
-        let lines = str.components(separatedBy: "\r\n")
+        let headerData = data.subdata(in: data.startIndex..<headerEnd.lowerBound)
+        guard let headerStr = String(data: headerData, encoding: .utf8) else { return nil }
+
+        let lines = headerStr.components(separatedBy: "\r\n")
         guard !lines.isEmpty else { return nil }
 
         // Parse request line
@@ -545,27 +720,17 @@ struct HTTPRequest {
 
         // Parse headers
         var headers: [String: String] = [:]
-        var bodyStart = 0
         for (i, line) in lines.enumerated() {
             if i == 0 { continue }
-            if line.isEmpty {
-                bodyStart = i + 1
-                break
-            }
+            if line.isEmpty { break }
             let parts = line.components(separatedBy: ": ")
             if parts.count >= 2 {
                 headers[parts[0].lowercased()] = parts.dropFirst().joined(separator: ": ")
             }
         }
 
-        // Parse body
-        var body = Data()
-        if bodyStart > 0 && bodyStart < lines.count {
-            // Find body in raw data (after \r\n\r\n)
-            if let range = data.range(of: Data("\r\n\r\n".utf8)) {
-                body = data.subdata(in: range.upperBound..<data.endIndex)
-            }
-        }
+        // Body is everything after \r\n\r\n (kept as raw Data for binary support)
+        let body = data.subdata(in: headerEnd.upperBound..<data.endIndex)
 
         return HTTPRequest(method: method, path: path, headers: headers, body: body)
     }
@@ -716,19 +881,53 @@ private let indexHTML = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GeoDraw - Web Control</title>
     <style>
+        /* 80s Retro Sci-Fi Theme - Matching GeoDraw Desktop */
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap');
+
+        :root {
+            --bg-deep: rgb(5, 5, 15);
+            --bg-panel: rgb(10, 10, 26);
+            --bg-card: rgb(15, 15, 36);
+            --bg-input: rgb(20, 20, 41);
+            --neon-cyan: #00ffff;
+            --neon-magenta: #ff00cc;
+            --neon-purple: #9900ff;
+            --neon-orange: #ff6600;
+            --neon-green: #33ff66;
+            --neon-red: #ff1a4d;
+            --neon-blue: #0099ff;
+            --neon-yellow: #ffff00;
+            --text-primary: rgb(230, 255, 255);
+            --text-secondary: rgb(128, 153, 179);
+            --border-default: rgb(38, 51, 77);
+            --grid-line: rgba(0, 77, 102, 0.3);
+        }
+
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #1a1a2e;
-            color: #eee;
+            font-family: 'Share Tech Mono', monospace;
+            background: var(--bg-deep);
+            background-image:
+                linear-gradient(var(--grid-line) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+            background-size: 40px 40px;
+            color: var(--text-primary);
             min-height: 100vh;
         }
         header {
-            background: #16213e;
+            background: linear-gradient(180deg, var(--bg-panel) 0%, var(--bg-deep) 100%);
             padding: 1rem;
-            border-bottom: 1px solid #0f3460;
+            border-bottom: 2px solid var(--neon-cyan);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
         }
-        header h1 { font-size: 1.5rem; font-weight: 500; }
+        header h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--neon-cyan);
+            text-shadow: 0 0 10px var(--neon-cyan), 0 0 20px var(--neon-cyan);
+            letter-spacing: 3px;
+        }
         nav {
             display: flex;
             gap: 0.5rem;
@@ -736,18 +935,40 @@ private let indexHTML = """
         }
         nav button {
             padding: 0.5rem 1rem;
-            border: none;
-            background: #0f3460;
-            color: #eee;
+            border: 1px solid var(--border-default);
+            background: var(--bg-card);
+            color: var(--text-secondary);
             border-radius: 4px;
             cursor: pointer;
+            font-family: 'Share Tech Mono', monospace;
             font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s;
         }
-        nav button:hover { background: #1a4980; }
-        nav button.active { background: #e94560; }
+        nav button:hover {
+            border-color: var(--neon-cyan);
+            color: var(--neon-cyan);
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+        }
+        nav button.active {
+            background: rgba(0, 255, 255, 0.15);
+            border-color: var(--neon-cyan);
+            color: var(--neon-cyan);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.4);
+        }
         main { padding: 1rem; max-width: 1200px; margin: 0 auto; }
         .section { display: none; }
         .section.active { display: block; }
+        h2 {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--neon-magenta);
+            text-shadow: 0 0 8px var(--neon-magenta);
+            margin-bottom: 1rem;
+            letter-spacing: 2px;
+            border-bottom: 1px solid var(--neon-magenta);
+            padding-bottom: 0.5rem;
+        }
 
         /* Status Panel */
         .status-grid {
@@ -760,6 +981,8 @@ private let indexHTML = """
             background: #000;
             border-radius: 8px;
             overflow: hidden;
+            border: 2px solid var(--neon-cyan);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
         }
         .preview-container img {
             width: 100%;
@@ -767,18 +990,23 @@ private let indexHTML = """
             display: block;
         }
         .status-info {
-            background: #16213e;
+            background: var(--bg-panel);
             padding: 1rem;
             border-radius: 8px;
+            border: 1px solid var(--border-default);
         }
         .status-item {
             display: flex;
             justify-content: space-between;
             padding: 0.5rem 0;
-            border-bottom: 1px solid #0f3460;
+            border-bottom: 1px solid var(--border-default);
         }
         .status-item:last-child { border-bottom: none; }
-        .status-value { color: #e94560; font-weight: 500; }
+        .status-value {
+            color: var(--neon-green);
+            font-weight: bold;
+            text-shadow: 0 0 5px var(--neon-green);
+        }
 
         /* Gobo Grid */
         .gobo-grid {
@@ -788,10 +1016,16 @@ private let indexHTML = """
             margin-top: 1rem;
         }
         .gobo-item {
-            background: #16213e;
+            background: var(--bg-card);
             border-radius: 8px;
             padding: 0.5rem;
             text-align: center;
+            border: 1px solid var(--border-default);
+            transition: all 0.3s;
+        }
+        .gobo-item:hover {
+            border-color: var(--neon-purple);
+            box-shadow: 0 0 15px rgba(153, 0, 255, 0.4);
         }
         .gobo-item img {
             width: 80px;
@@ -802,26 +1036,82 @@ private let indexHTML = """
         }
         .gobo-item .gobo-id {
             font-size: 0.75rem;
-            color: #888;
+            color: var(--neon-purple);
             margin-top: 0.25rem;
         }
         .gobo-item.empty {
             opacity: 0.3;
         }
+        .gobo-item[draggable="true"] {
+            cursor: grab;
+        }
+        .gobo-item[draggable="true"]:active {
+            cursor: grabbing;
+        }
+        .gobo-item.dragging {
+            opacity: 0.5;
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+        }
+        .gobo-item.drag-over {
+            border-color: var(--neon-green);
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.6);
+            transform: scale(1.05);
+        }
+        .gobo-grid.dragging-active .gobo-item:not(.dragging):hover {
+            border-color: var(--neon-orange);
+        }
 
         /* Upload Zone */
         .upload-zone {
-            border: 2px dashed #0f3460;
+            border: 2px dashed var(--neon-magenta);
             border-radius: 8px;
-            padding: 2rem;
+            padding: 1.5rem;
             text-align: center;
             margin-bottom: 1rem;
-            cursor: pointer;
-            transition: border-color 0.2s;
+            background: rgba(255, 0, 204, 0.05);
+            transition: all 0.3s;
         }
-        .upload-zone:hover { border-color: #e94560; }
-        .upload-zone.dragover { border-color: #e94560; background: rgba(233, 69, 96, 0.1); }
+        .upload-zone:hover {
+            border-color: var(--neon-cyan);
+            background: rgba(0, 255, 255, 0.05);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+        }
+        .upload-zone.dragover {
+            border-color: var(--neon-green);
+            background: rgba(51, 255, 102, 0.1);
+            box-shadow: 0 0 30px rgba(51, 255, 102, 0.3);
+        }
         .upload-zone input { display: none; }
+        .upload-zone p { margin-bottom: 0.75rem; color: var(--text-secondary); }
+        .upload-zone .btn-browse {
+            padding: 0.5rem 1.5rem;
+            background: linear-gradient(135deg, var(--neon-magenta), var(--neon-purple));
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 0 15px rgba(255, 0, 204, 0.5);
+            transition: all 0.3s;
+        }
+        .upload-zone .btn-browse:hover {
+            box-shadow: 0 0 25px rgba(255, 0, 204, 0.7);
+            transform: scale(1.02);
+        }
+        .upload-status {
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+            color: var(--neon-green);
+            text-shadow: 0 0 5px var(--neon-green);
+        }
+        .upload-status.error {
+            color: var(--neon-red);
+            text-shadow: 0 0 5px var(--neon-red);
+        }
 
         /* Media Slots Table */
         .slots-table {
@@ -832,20 +1122,42 @@ private let indexHTML = """
         .slots-table th, .slots-table td {
             padding: 0.75rem;
             text-align: left;
-            border-bottom: 1px solid #0f3460;
+            border-bottom: 1px solid var(--border-default);
         }
-        .slots-table th { background: #16213e; }
-        .slots-table tr:hover { background: rgba(255,255,255,0.05); }
-        .slot-empty { color: #666; }
+        .slots-table th {
+            background: var(--bg-panel);
+            color: var(--neon-orange);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .slots-table tr:hover { background: rgba(0, 255, 255, 0.05); }
+        .slot-empty { color: var(--text-secondary); }
         .btn {
             padding: 0.25rem 0.5rem;
-            border: none;
+            border: 1px solid transparent;
             border-radius: 4px;
             cursor: pointer;
+            font-family: 'Share Tech Mono', monospace;
             font-size: 0.8rem;
+            text-transform: uppercase;
+            transition: all 0.3s;
         }
-        .btn-danger { background: #e94560; color: white; }
-        .btn-primary { background: #0f3460; color: white; }
+        .btn-danger {
+            background: var(--neon-red);
+            color: white;
+            box-shadow: 0 0 10px rgba(255, 26, 77, 0.5);
+        }
+        .btn-danger:hover {
+            box-shadow: 0 0 20px rgba(255, 26, 77, 0.8);
+        }
+        .btn-primary {
+            background: var(--bg-card);
+            color: var(--neon-cyan);
+            border-color: var(--neon-cyan);
+        }
+        .btn-primary:hover {
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+        }
 
         /* NDI Sources */
         .source-list {
@@ -858,8 +1170,10 @@ private let indexHTML = """
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: #16213e;
+            background: var(--bg-card);
             padding: 0.75rem 1rem;
+            border: 1px solid var(--neon-blue);
+            box-shadow: 0 0 10px rgba(0, 153, 255, 0.2);
             border-radius: 4px;
         }
 
@@ -911,8 +1225,16 @@ private let indexHTML = """
         <div id="gobos" class="section">
             <h2>Gobos (Slots 21-200)</h2>
             <div class="upload-zone" id="goboUpload">
-                <p>Drag & drop PNG files here or click to browse</p>
-                <input type="file" accept=".png" multiple>
+                <p>Upload gobo to specific DMX slot</p>
+                <div style="display:flex;gap:1rem;justify-content:center;align-items:center;margin-bottom:0.75rem;flex-wrap:wrap;">
+                    <label style="color:var(--neon-cyan);">Slot:</label>
+                    <input type="number" id="goboSlotInput" min="21" max="200" value="21"
+                           style="width:80px;padding:0.5rem;background:var(--bg-input);border:1px solid var(--neon-cyan);border-radius:4px;color:var(--text-primary);font-family:inherit;text-align:center;">
+                    <span id="slotStatus" style="font-size:0.85rem;color:var(--neon-green);"></span>
+                    <button class="btn-browse" onclick="document.getElementById('goboFileInput').click()">Browse PNG</button>
+                </div>
+                <input type="file" id="goboFileInput" accept=".png,image/png">
+                <div class="upload-status" id="goboUploadStatus"></div>
             </div>
             <div class="gobo-grid" id="goboGrid"></div>
         </div>
@@ -921,8 +1243,10 @@ private let indexHTML = """
         <div id="media" class="section">
             <h2>Media Slots (201-255)</h2>
             <div class="upload-zone" id="videoUpload">
-                <p>Drag & drop video files here or click to browse</p>
-                <input type="file" accept=".mp4,.mov,.avi,.mkv,.m4v" multiple>
+                <p>Drag & drop video files here</p>
+                <button class="btn-browse" onclick="document.getElementById('videoFileInput').click()">Browse Files</button>
+                <input type="file" id="videoFileInput" accept=".mp4,.mov,.avi,.mkv,.m4v,video/*" multiple>
+                <div class="upload-status" id="videoUploadStatus"></div>
             </div>
             <table class="slots-table">
                 <thead>
@@ -973,44 +1297,200 @@ private let indexHTML = """
                 const res = await fetch('/api/v1/gobos');
                 const data = await res.json();
                 const grid = document.getElementById('goboGrid');
-                grid.innerHTML = data.gobos.map(g => `
-                    <div class="gobo-item ${g.hasImage ? '' : 'empty'}">
-                        ${g.hasImage ? `<img src="${g.imageUrl}" alt="Gobo ${g.id}">` : '<div style="width:80px;height:80px;background:#000;border-radius:4px"></div>'}
+
+                // Track occupied slots
+                occupiedGoboSlots = {};
+                data.gobos.forEach(g => {
+                    if (g.hasImage) occupiedGoboSlots[g.id] = g.name;
+                });
+
+                // Set input to first empty slot
+                const emptySlot = findEmptySlot();
+                document.getElementById('goboSlotInput').value = emptySlot;
+                updateSlotStatus();
+
+                // Only show gobos that have images (occupied slots)
+                const occupiedGobos = data.gobos.filter(g => g.hasImage);
+                grid.innerHTML = occupiedGobos.map(g => `
+                    <div class="gobo-item" data-gobo-id="${g.id}" draggable="true" style="position:relative;">
+                        <img src="${g.imageUrl}" alt="Gobo ${g.id}" onclick="selectGoboSlot(${g.id})" style="cursor:pointer;" draggable="false">
                         <div class="gobo-id">${g.id}: ${g.name}</div>
+                        <button onclick="event.stopPropagation();deleteGobo(${g.id})" style="position:absolute;top:4px;right:4px;background:var(--neon-red);border:none;color:white;width:20px;height:20px;border-radius:50%;cursor:pointer;font-size:12px;line-height:1;" title="Delete">×</button>
                     </div>
-                `).join('');
+                `).join('') || '<p style="color:var(--text-secondary);padding:1rem;">No gobos loaded</p>';
+
+                // Setup drag-and-drop for gobo reordering
+                setupGoboDragAndDrop();
             } catch (e) { console.error('Gobos error:', e); }
         }
 
-        // Upload handling
-        function setupUpload(zoneId, endpoint, onSuccess) {
-            const zone = document.getElementById(zoneId);
-            const input = zone.querySelector('input');
+        // Gobo drag-and-drop reordering
+        let draggedGoboId = null;
 
-            zone.addEventListener('click', () => input.click());
-            zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
-            zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
-            zone.addEventListener('drop', e => {
-                e.preventDefault();
-                zone.classList.remove('dragover');
-                uploadFiles(e.dataTransfer.files, endpoint, onSuccess);
+        function setupGoboDragAndDrop() {
+            const grid = document.getElementById('goboGrid');
+            const items = grid.querySelectorAll('.gobo-item[draggable="true"]');
+
+            items.forEach(item => {
+                item.addEventListener('dragstart', handleGoboDragStart);
+                item.addEventListener('dragend', handleGoboDragEnd);
+                item.addEventListener('dragover', handleGoboDragOver);
+                item.addEventListener('dragleave', handleGoboDragLeave);
+                item.addEventListener('drop', handleGoboDrop);
             });
-            input.addEventListener('change', () => uploadFiles(input.files, endpoint, onSuccess));
         }
 
-        async function uploadFiles(files, endpoint, onSuccess) {
-            for (const file of files) {
-                const formData = new FormData();
-                formData.append('file', file);
-                try {
-                    await fetch(endpoint, { method: 'POST', body: formData });
-                    onSuccess();
-                } catch (e) { console.error('Upload error:', e); }
+        function handleGoboDragStart(e) {
+            draggedGoboId = parseInt(this.dataset.goboId);
+            this.classList.add('dragging');
+            document.getElementById('goboGrid').classList.add('dragging-active');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', draggedGoboId);
+        }
+
+        function handleGoboDragEnd(e) {
+            this.classList.remove('dragging');
+            document.getElementById('goboGrid').classList.remove('dragging-active');
+            document.querySelectorAll('.gobo-item.drag-over').forEach(el => el.classList.remove('drag-over'));
+            draggedGoboId = null;
+        }
+
+        function handleGoboDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            const targetId = parseInt(this.dataset.goboId);
+            if (targetId !== draggedGoboId) {
+                this.classList.add('drag-over');
             }
         }
 
+        function handleGoboDragLeave(e) {
+            this.classList.remove('drag-over');
+        }
+
+        async function handleGoboDrop(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+            const targetId = parseInt(this.dataset.goboId);
+
+            if (draggedGoboId && targetId !== draggedGoboId) {
+                try {
+                    const response = await fetch(`/api/v1/gobos/${draggedGoboId}/move/${targetId}`, {
+                        method: 'PUT'
+                    });
+                    if (response.ok) {
+                        loadGobos(); // Refresh grid
+                    } else {
+                        const err = await response.text();
+                        console.error('Move failed:', err);
+                        alert('Failed to move gobo: ' + err);
+                    }
+                } catch (e) {
+                    console.error('Move error:', e);
+                }
+            }
+        }
+
+        // Upload handling
+        function setupUpload(zoneId, inputId, statusId, endpoint, onSuccess) {
+            const zone = document.getElementById(zoneId);
+            const input = document.getElementById(inputId);
+            const status = document.getElementById(statusId);
+
+            // Drag and drop
+            zone.addEventListener('dragover', e => {
+                e.preventDefault();
+                e.stopPropagation();
+                zone.classList.add('dragover');
+            });
+            zone.addEventListener('dragleave', e => {
+                e.preventDefault();
+                zone.classList.remove('dragover');
+            });
+            zone.addEventListener('drop', e => {
+                e.preventDefault();
+                e.stopPropagation();
+                zone.classList.remove('dragover');
+                if (e.dataTransfer.files.length > 0) {
+                    uploadFiles(e.dataTransfer.files, endpoint, status, onSuccess);
+                }
+            });
+
+            // File input change
+            input.addEventListener('change', () => {
+                if (input.files.length > 0) {
+                    uploadFiles(input.files, endpoint, status, onSuccess);
+                    input.value = ''; // Reset for next upload
+                }
+            });
+        }
+
+        async function uploadFiles(files, endpoint, statusEl, onSuccess) {
+            statusEl.textContent = `Uploading ${files.length} file(s)...`;
+            statusEl.className = 'upload-status';
+
+            let successCount = 0;
+            let errorCount = 0;
+            let lastError = '';
+
+            for (const file of files) {
+                statusEl.textContent = `Uploading ${file.name} (${(file.size/1024/1024).toFixed(1)}MB)...`;
+                const formData = new FormData();
+                formData.append('file', file);
+                try {
+                    const response = await fetch(endpoint, { method: 'POST', body: formData });
+                    const text = await response.text();
+                    console.log('Upload response:', response.status, text);
+                    if (response.ok) {
+                        successCount++;
+                    } else {
+                        errorCount++;
+                        lastError = text;
+                        console.error('Upload failed:', response.status, text);
+                    }
+                } catch (e) {
+                    errorCount++;
+                    lastError = e.message;
+                    console.error('Upload error:', e);
+                }
+            }
+
+            if (errorCount > 0) {
+                statusEl.textContent = `Failed: ${lastError || 'Unknown error'}`;
+                statusEl.className = 'upload-status error';
+            } else {
+                statusEl.textContent = `Uploaded ${successCount} file(s) successfully`;
+                statusEl.className = 'upload-status';
+            }
+
+            onSuccess();
+
+            // Clear status after 3 seconds
+            setTimeout(() => { statusEl.textContent = ''; }, 3000);
+        }
+
         // Media Slots
+        let availableVideos = [];
+        let availableNDI = [];
+
+        async function loadVideos() {
+            try {
+                const res = await fetch('/api/v1/media/videos');
+                const data = await res.json();
+                availableVideos = data.videos || [];
+            } catch (e) { console.error('Videos error:', e); }
+        }
+
+        async function loadNDISources() {
+            try {
+                const res = await fetch('/api/v1/ndi/sources');
+                const data = await res.json();
+                availableNDI = data.sources || [];
+            } catch (e) { console.error('NDI error:', e); }
+        }
+
         async function loadSlots() {
+            await Promise.all([loadVideos(), loadNDISources()]);
             try {
                 const res = await fetch('/api/v1/media/slots');
                 const data = await res.json();
@@ -1020,10 +1500,37 @@ private let indexHTML = """
                         <td>${s.slot}</td>
                         <td>${s.type}</td>
                         <td class="${s.type === 'none' ? 'slot-empty' : ''}">${s.displayName}</td>
-                        <td>${s.type !== 'none' ? `<button class="btn btn-danger" onclick="clearSlot(${s.slot})">Clear</button>` : ''}</td>
+                        <td>
+                            ${s.type !== 'none'
+                                ? `<button class="btn btn-danger" onclick="clearSlot(${s.slot})">Clear</button>`
+                                : `<select onchange="assignSource(${s.slot}, this.value)" style="padding:4px;border-radius:4px;background:#0f3460;color:#eee;border:none;max-width:200px;">
+                                    <option value="">Assign Source...</option>
+                                    <optgroup label="Videos">
+                                        ${availableVideos.map(v => `<option value="video:${v.path}">${v.filename}</option>`).join('')}
+                                    </optgroup>
+                                    <optgroup label="NDI Sources">
+                                        ${availableNDI.map(n => `<option value="ndi:${n.name}">${n.name}</option>`).join('')}
+                                    </optgroup>
+                                   </select>`
+                            }
+                        </td>
                     </tr>
                 `).join('');
             } catch (e) { console.error('Slots error:', e); }
+        }
+
+        async function assignSource(slot, value) {
+            if (!value) return;
+            const [type, source] = value.split(':');
+            const fullSource = value.substring(value.indexOf(':') + 1);
+            try {
+                await fetch(`/api/v1/media/slots/${slot}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: type, source: fullSource })
+                });
+                loadSlots();
+            } catch (e) { console.error('Assign error:', e); }
         }
 
         async function clearSlot(slot) {
@@ -1059,8 +1566,97 @@ private let indexHTML = """
         loadGobos();
         loadSlots();
         loadNDI();
-        setupUpload('goboUpload', '/api/v1/gobos/upload', loadGobos);
-        setupUpload('videoUpload', '/api/v1/media/videos/upload', loadSlots);
+
+        // Track occupied gobo slots
+        let occupiedGoboSlots = {};
+
+        function updateSlotStatus() {
+            const slot = parseInt(document.getElementById('goboSlotInput').value);
+            const statusEl = document.getElementById('slotStatus');
+            if (occupiedGoboSlots[slot]) {
+                statusEl.textContent = '⚠ OCCUPIED';
+                statusEl.style.color = 'var(--neon-orange)';
+            } else {
+                statusEl.textContent = '✓ Empty';
+                statusEl.style.color = 'var(--neon-green)';
+            }
+        }
+
+        // Update slot status when input changes
+        document.getElementById('goboSlotInput').addEventListener('input', updateSlotStatus);
+
+        // Find first empty slot
+        function findEmptySlot() {
+            for (let i = 21; i <= 200; i++) {
+                if (!occupiedGoboSlots[i]) return i;
+            }
+            return 21;
+        }
+
+        // Select a gobo slot (click on gobo image to set input to that slot)
+        function selectGoboSlot(id) {
+            document.getElementById('goboSlotInput').value = id;
+            updateSlotStatus();
+        }
+
+        // Delete a gobo
+        async function deleteGobo(id) {
+            const name = occupiedGoboSlots[id] || `Gobo ${id}`;
+            if (!confirm(`Delete gobo ${id} (${name})?`)) return;
+            try {
+                const res = await fetch(`/api/v1/gobos/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadGobos();
+                } else {
+                    const data = await res.json();
+                    alert(data.error || 'Delete failed');
+                }
+            } catch (e) {
+                alert('Delete error: ' + e.message);
+            }
+        }
+
+        // Gobo upload with slot selection and overwrite protection
+        document.getElementById('goboFileInput').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const slot = parseInt(document.getElementById('goboSlotInput').value);
+            if (slot < 21 || slot > 200) {
+                document.getElementById('goboUploadStatus').textContent = 'Slot must be 21-200';
+                document.getElementById('goboUploadStatus').className = 'upload-status error';
+                return;
+            }
+            // Warn if slot is occupied
+            if (occupiedGoboSlots[slot]) {
+                if (!confirm(`Slot ${slot} already has a gobo (${occupiedGoboSlots[slot]}). Replace it?`)) {
+                    e.target.value = '';
+                    return;
+                }
+            }
+            const status = document.getElementById('goboUploadStatus');
+            status.textContent = `Uploading to slot ${slot}...`;
+            status.className = 'upload-status';
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('slot', slot);
+            try {
+                const res = await fetch('/api/v1/gobos/upload', { method: 'POST', body: formData });
+                const data = await res.json();
+                if (res.ok) {
+                    status.textContent = `Uploaded to slot ${data.slot}`;
+                    loadGobos();
+                } else {
+                    status.textContent = data.error || 'Upload failed';
+                    status.className = 'upload-status error';
+                }
+            } catch (err) {
+                status.textContent = err.message;
+                status.className = 'upload-status error';
+            }
+            e.target.value = '';
+            setTimeout(() => { status.textContent = ''; }, 3000);
+        });
+        setupUpload('videoUpload', 'videoFileInput', 'videoUploadStatus', '/api/v1/media/videos/upload', loadSlots);
 
         // Auto-refresh
         setInterval(updateStatus, 5000);

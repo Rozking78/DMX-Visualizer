@@ -84,8 +84,8 @@ extension Notification.Name {
 }
 
 /// Watches multiple gobo folders for changes and notifies when gobos are updated
-@MainActor
-final class GoboFileWatcher {
+/// Note: Not @MainActor because dispatch sources run on their own queue
+final class GoboFileWatcher: @unchecked Sendable {
     static let shared = GoboFileWatcher()
 
     private var folderMonitors: [DispatchSourceFileSystemObject] = []
@@ -93,6 +93,7 @@ final class GoboFileWatcher {
     private let queue = DispatchQueue(label: "gobo.file.watcher")
     private var lastModTimes: [String: Date] = [:]
     private var watchedFolders: [URL] = []
+    private let lock = NSLock()  // Protect mutable state
 
     private init() {}
 
@@ -153,7 +154,14 @@ final class GoboFileWatcher {
             if let attrs = try? FileManager.default.attributesOfItem(atPath: file.path),
                let modDate = attrs[.modificationDate] as? Date {
 
-                if let lastMod = lastModTimes[fileKey], modDate > lastMod {
+                // Thread-safe access to lastModTimes
+                lock.lock()
+                let lastMod = lastModTimes[fileKey]
+                let isModified = lastMod != nil && modDate > lastMod!
+                lastModTimes[fileKey] = modDate
+                lock.unlock()
+
+                if isModified {
                     // File was modified
                     if let goboId = extractGoboId(from: filename) {
                         print("GoboWatcher: Detected change in gobo \(goboId) (\(filename)) from \(folder.lastPathComponent)")
@@ -166,8 +174,6 @@ final class GoboFileWatcher {
                         }
                     }
                 }
-
-                lastModTimes[fileKey] = modDate
             }
         }
     }
@@ -4882,9 +4888,10 @@ final class GoboLibrary {
 
             for file in files where file.pathExtension == "png" {
                 let filename = file.lastPathComponent
-                // Extract gobo ID from filename (gobo_XXX_name.png)
-                let pattern = #"gobo_(\d{3})"#
-                if let regex = try? NSRegularExpression(pattern: pattern),
+
+                // Try pattern 1: gobo_XXX_name.png (3-digit slot number)
+                let slotPattern = #"gobo_(\d{3})"#
+                if let regex = try? NSRegularExpression(pattern: slotPattern),
                    let match = regex.firstMatch(in: filename, range: NSRange(filename.startIndex..., in: filename)),
                    let range = Range(match.range(at: 1), in: filename),
                    let goboId = Int(filename[range]) {
@@ -4893,6 +4900,31 @@ final class GoboLibrary {
                        let image = CGImageSourceCreateImageAtIndex(source, 0, nil) {
                         goboImages[goboId] = image
                         foundCount += 1
+                    }
+                    continue
+                }
+
+                // Try pattern 2: gobo_XXXXXXXX.png (GoboCreator hex ID)
+                // Assign to next available slot starting from 100
+                let hexPattern = #"gobo_([0-9A-Fa-f]{8})\.png"#
+                if let regex = try? NSRegularExpression(pattern: hexPattern),
+                   regex.firstMatch(in: filename, range: NSRange(filename.startIndex..., in: filename)) != nil {
+
+                    // Find next available slot (100-200)
+                    var assignedSlot: Int? = nil
+                    for slot in 100...200 {
+                        if goboImages[slot] == nil {
+                            assignedSlot = slot
+                            break
+                        }
+                    }
+
+                    if let slot = assignedSlot,
+                       let source = CGImageSourceCreateWithURL(file as CFURL, nil),
+                       let image = CGImageSourceCreateImageAtIndex(source, 0, nil) {
+                        goboImages[slot] = image
+                        foundCount += 1
+                        NSLog("GoboLibrary: Assigned GoboCreator file %@ to slot %d", filename, slot)
                     }
                 }
             }
