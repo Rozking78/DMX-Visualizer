@@ -1,0 +1,28 @@
+{
+  "name": "steamdeck-output-config",
+  "version": "1.0.0",
+  "description": "Steam Deck remote output configuration for DMX Visualizer",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
+  },
+  "keywords": ["steamdeck", "dmx", "output", "keystone", "blend"],
+  "author": "Rozking78",
+  "license": "MIT",
+  "dependencies": {
+    "@tauri-apps/api": "^2.9.1",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "zustand": "^5.0.10"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.9.6",
+    "@vitejs/plugin-react": "^4.7.0",
+    "vite": "^6.4.1"
+  }
+}
