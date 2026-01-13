@@ -1,44 +1,47 @@
 import { useEffect, useRef } from 'react';
 import { useStore } from '../../utils/store';
-import { throttledSendConfig } from '../../utils/websocket';
 
 /**
- * GamepadController - Handle Steam Deck gamepad input for output configuration
+ * GamepadController - Handle Steam Deck gamepad input for DMX Visualizer control
  *
  * Control Scheme:
- * - Left Stick: Move position (Position mode) / Move corner (Keystone mode) / Adjust width (Blend mode)
- * - Right Stick: Scale/Rotation (Position) / Fine adjust (Keystone) / Curve/Gamma (Blend)
- * - D-Pad: Navigate outputs / Select corners / Select edges
+ * - LB/RB: Switch between main tabs (Status, Outputs, Gobos, Media, NDI)
+ * - D-Pad: Navigate within current view
  * - A: Select/Confirm
- * - B: Back/Cancel
- * - X: Toggle Keystone mode
- * - Y: Toggle Blend mode
- * - LB/RB: Cycle through outputs
- * - LT/RT: Fine adjustment modifier / Reset
- * - Start: Save configuration
- * - Select: Reset current mode
+ * - B: Back/Cancel/Close Modal
+ * - X: Context action 1 (Refresh in NDI, etc.)
+ * - Y: Context action 2
+ * - Left Stick: Navigate lists / Adjust values
+ * - Right Stick: Fine adjustment
+ * - LT/RT: Page up/down in lists
+ * - Start: Save/Apply
+ * - Select: Reset/Refresh
  */
 
-const DEADZONE = 0.15;
-const STICK_SENSITIVITY = 0.02;
-const FINE_SENSITIVITY = 0.005;
-
-const CORNERS = ['topLeft', 'topMid', 'topRight', 'rightMid', 'bottomRight', 'bottomMid', 'bottomLeft', 'leftMid'];
-const EDGES = ['top', 'right', 'bottom', 'left'];
+const DEADZONE = 0.2;
+const REPEAT_DELAY = 300; // ms before repeat starts
+const REPEAT_RATE = 100; // ms between repeats
 
 export default function GamepadController() {
   const {
-    mode, setMode,
-    selectedCorner, setSelectedCorner, moveSelectedCorner,
-    selectedEdge, setSelectedEdge, updateBlend, blend,
-    movePosition, updatePosition, position,
-    outputs, selectedOutputId, setSelectedOutputId,
-    resetKeystone, resetPosition, resetBlend,
+    activeTab,
+    nextTab,
+    prevTab,
+    settingsModalOpen,
+    closeSettingsModal,
+    focusedIndex,
+    setFocusedIndex,
     setGamepadConnected,
-    sendConfig,
+    // Gobos
+    selectedGoboSlot,
+    setSelectedGoboSlot,
+    // Media
+    selectedMediaSlot,
+    setSelectedMediaSlot,
   } = useStore();
 
   const lastButtonStates = useRef({});
+  const repeatTimers = useRef({});
   const animationFrameId = useRef(null);
 
   const applyDeadzone = (value) => {
@@ -46,43 +49,41 @@ export default function GamepadController() {
     return (value - Math.sign(value) * DEADZONE) / (1 - DEADZONE);
   };
 
-  const handleButtonPress = (buttonIndex, triggerValue = 1) => {
-    const fineMode = triggerValue > 0.5;
-
+  const handleButtonPress = (buttonIndex) => {
     switch (buttonIndex) {
       case 0: // A - Select/Confirm
-        sendConfig();
+        // Trigger click on focused element
+        document.querySelector('.gamepad-focused')?.click();
         break;
 
       case 1: // B - Back/Cancel
-        // Could implement modal closing or navigation
+        if (settingsModalOpen) {
+          closeSettingsModal();
+        }
         break;
 
-      case 2: // X - Keystone mode
-        setMode(mode === 'keystone' ? 'position' : 'keystone');
+      case 2: // X - Context action (Refresh)
+        // Could trigger refresh in NDI view, etc.
+        document.querySelector('.btn-primary')?.click();
         break;
 
-      case 3: // Y - Blend mode
-        setMode(mode === 'blend' ? 'position' : 'blend');
+      case 3: // Y - Context action 2
         break;
 
-      case 4: // LB - Previous output
-        cycleOutput(-1);
+      case 4: // LB - Previous tab
+        prevTab();
         break;
 
-      case 5: // RB - Next output
-        cycleOutput(1);
+      case 5: // RB - Next tab
+        nextTab();
         break;
 
-      case 8: // Select - Reset current mode
-        if (mode === 'keystone') resetKeystone();
-        else if (mode === 'blend') resetBlend();
-        else resetPosition();
-        throttledSendConfig();
+      case 8: // Select - Refresh
+        document.querySelector('.btn-primary')?.click();
         break;
 
       case 9: // Start - Save
-        sendConfig();
+        document.querySelector('.btn-success')?.click();
         break;
 
       case 12: // D-Pad Up
@@ -103,104 +104,46 @@ export default function GamepadController() {
     }
   };
 
-  const cycleOutput = (direction) => {
-    if (outputs.length === 0) return;
-    const currentIndex = outputs.findIndex(o => o.id === selectedOutputId);
-    let newIndex = currentIndex + direction;
-    if (newIndex < 0) newIndex = outputs.length - 1;
-    if (newIndex >= outputs.length) newIndex = 0;
-    setSelectedOutputId(outputs[newIndex].id);
-  };
-
   const handleDPad = (direction) => {
-    if (mode === 'keystone') {
-      // Cycle through corners
-      const currentIndex = CORNERS.indexOf(selectedCorner);
-      let newIndex;
-      if (direction === 'right') newIndex = (currentIndex + 1) % CORNERS.length;
-      else if (direction === 'left') newIndex = (currentIndex - 1 + CORNERS.length) % CORNERS.length;
-      else if (direction === 'up') {
-        // Jump to top corners
-        if (currentIndex >= 4) newIndex = currentIndex - 4;
-        else newIndex = currentIndex;
-      } else if (direction === 'down') {
-        // Jump to bottom corners
-        if (currentIndex < 4) newIndex = (currentIndex + 4) % CORNERS.length;
-        else newIndex = currentIndex;
-      }
-      if (newIndex !== undefined) setSelectedCorner(CORNERS[newIndex]);
-    } else if (mode === 'blend') {
-      // Cycle through edges
-      const currentIndex = EDGES.indexOf(selectedEdge);
-      let newIndex;
-      if (direction === 'right') newIndex = (currentIndex + 1) % EDGES.length;
-      else if (direction === 'left') newIndex = (currentIndex - 1 + EDGES.length) % EDGES.length;
-      else if (direction === 'up') newIndex = 0; // top
-      else if (direction === 'down') newIndex = 2; // bottom
-      if (newIndex !== undefined) setSelectedEdge(EDGES[newIndex]);
+    // Navigation varies by tab
+    if (activeTab === 'gobos') {
+      // Navigate gobo grid (10 columns)
+      let newSlot = selectedGoboSlot;
+      if (direction === 'up') newSlot = Math.max(21, selectedGoboSlot - 10);
+      else if (direction === 'down') newSlot = Math.min(200, selectedGoboSlot + 10);
+      else if (direction === 'left') newSlot = Math.max(21, selectedGoboSlot - 1);
+      else if (direction === 'right') newSlot = Math.min(200, selectedGoboSlot + 1);
+      setSelectedGoboSlot(newSlot);
+    } else if (activeTab === 'media') {
+      // Navigate media slots
+      let newSlot = selectedMediaSlot;
+      if (direction === 'up') newSlot = Math.max(201, selectedMediaSlot - 1);
+      else if (direction === 'down') newSlot = Math.min(255, selectedMediaSlot + 1);
+      setSelectedMediaSlot(newSlot);
     } else {
-      // Position mode - cycle outputs
-      if (direction === 'left' || direction === 'up') cycleOutput(-1);
-      else cycleOutput(1);
+      // Generic list navigation
+      const items = document.querySelectorAll('.output-item, .source-item, .display-item');
+      if (items.length === 0) return;
+
+      let newIndex = focusedIndex;
+      if (direction === 'up') newIndex = Math.max(0, focusedIndex - 1);
+      else if (direction === 'down') newIndex = Math.min(items.length - 1, focusedIndex + 1);
+
+      // Update focus styling
+      items.forEach((item, i) => {
+        item.classList.toggle('gamepad-focused', i === newIndex);
+      });
+      setFocusedIndex(newIndex);
     }
   };
 
   const handleAnalogSticks = (gamepad) => {
-    const leftX = applyDeadzone(gamepad.axes[0]);
     const leftY = applyDeadzone(gamepad.axes[1]);
-    const rightX = applyDeadzone(gamepad.axes[2]);
-    const rightY = applyDeadzone(gamepad.axes[3]);
 
-    // LT and RT for fine control
-    const lt = gamepad.buttons[6]?.value || 0;
-    const rt = gamepad.buttons[7]?.value || 0;
-    const fineMode = lt > 0.3;
-    const sensitivity = fineMode ? FINE_SENSITIVITY : STICK_SENSITIVITY;
-
-    if (mode === 'position') {
-      // Left stick: move X/Y
-      if (leftX !== 0 || leftY !== 0) {
-        movePosition(leftX * sensitivity * 100, leftY * sensitivity * 100);
-        throttledSendConfig();
-      }
-      // Right stick: scale (Y) and rotation (X)
-      if (rightY !== 0) {
-        const scaleChange = -rightY * sensitivity;
-        updatePosition({ scale: Math.max(0.1, Math.min(3, position.scale + scaleChange)) });
-        throttledSendConfig();
-      }
-      if (rightX !== 0) {
-        const rotChange = rightX * sensitivity * 180;
-        updatePosition({ rotation: position.rotation + rotChange });
-        throttledSendConfig();
-      }
-    } else if (mode === 'keystone') {
-      // Left stick: move selected corner
-      if (leftX !== 0 || leftY !== 0) {
-        moveSelectedCorner(leftX * sensitivity, leftY * sensitivity);
-        throttledSendConfig();
-      }
-    } else if (mode === 'blend') {
-      // Left stick X: blend width
-      if (leftX !== 0) {
-        const currentBlend = blend[selectedEdge];
-        const newWidth = Math.max(0, Math.min(0.5, currentBlend.width + leftX * sensitivity));
-        updateBlend(selectedEdge, { width: newWidth, enabled: newWidth > 0 });
-        throttledSendConfig();
-      }
-      // Right stick: curve (X) and gamma (Y)
-      if (rightX !== 0) {
-        const currentBlend = blend[selectedEdge];
-        const newCurve = Math.max(0, Math.min(1, currentBlend.curve + rightX * sensitivity));
-        updateBlend(selectedEdge, { curve: newCurve });
-        throttledSendConfig();
-      }
-      if (rightY !== 0) {
-        const currentBlend = blend[selectedEdge];
-        const newGamma = Math.max(0.1, Math.min(3, currentBlend.gamma - rightY * sensitivity));
-        updateBlend(selectedEdge, { gamma: newGamma });
-        throttledSendConfig();
-      }
+    // Left stick Y for scrolling lists
+    if (Math.abs(leftY) > 0.5) {
+      const direction = leftY > 0 ? 'down' : 'up';
+      handleDPad(direction);
     }
   };
 
@@ -222,13 +165,13 @@ export default function GamepadController() {
       const isPressed = button.pressed;
 
       if (isPressed && !wasPressed) {
-        handleButtonPress(index, button.value);
+        handleButtonPress(index);
       }
 
       lastButtonStates.current[index] = isPressed;
     });
 
-    // Handle analog sticks (continuous)
+    // Handle analog sticks (throttled)
     handleAnalogSticks(gamepad);
 
     animationFrameId.current = requestAnimationFrame(pollGamepad);
@@ -241,8 +184,10 @@ export default function GamepadController() {
       if (animationFrameId.current) {
         cancelAnimationFrame(animationFrameId.current);
       }
+      // Clear any repeat timers
+      Object.values(repeatTimers.current).forEach(clearTimeout);
     };
-  }, [mode, selectedCorner, selectedEdge, position, blend]);
+  }, [activeTab, focusedIndex, selectedGoboSlot, selectedMediaSlot, settingsModalOpen]);
 
   return null; // This is a logic-only component
 }
