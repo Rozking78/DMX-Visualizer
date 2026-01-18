@@ -2268,10 +2268,14 @@ class OutputSettingsWindowController: NSWindowController, NSWindowDelegate {
             let member = getMemberPosition(index: i)
             if !member.enabled { continue }
 
-            // Convert pixel position to preview coordinates
-            // In AppKit, Y=0 is bottom. In canvas coords, Y=0 is top.
-            let x = CGFloat(member.x) * scale
-            let y = scaledH - CGFloat(member.y + member.h) * scale  // Flip Y
+            // Convert CENTER-RELATIVE offset to top-left pixel position
+            // Position x/y are OFFSETS from canvas center (0 = centered)
+            let leftEdge = (canvasW / 2.0) + CGFloat(member.x) - (CGFloat(member.w) / 2.0)
+            let topEdge = (canvasH / 2.0) + CGFloat(member.y) - (CGFloat(member.h) / 2.0)
+
+            // Convert to preview coordinates (AppKit Y=0 is bottom, canvas Y=0 is top)
+            let x = leftEdge * scale
+            let y = scaledH - (topEdge + CGFloat(member.h)) * scale  // Flip Y
             let w = CGFloat(member.w) * scale
             let h = CGFloat(member.h) * scale
 
@@ -4603,9 +4607,14 @@ class OutputSettingsWindowController: NSWindowController, NSWindowDelegate {
             let member = getMemberPosition(index: i)
             if !member.enabled { continue }
 
-            // Convert pixel position to preview coordinates (Y flipped)
-            let x = offsetX + CGFloat(member.x) * scale
-            let y = offsetY + scaledH - CGFloat(member.y + member.h) * scale
+            // Convert CENTER-RELATIVE offset to top-left pixel position
+            // Position x/y are OFFSETS from canvas center (0 = centered)
+            let leftEdge = (canvasW / 2.0) + CGFloat(member.x) - (CGFloat(member.w) / 2.0)
+            let topEdge = (canvasH / 2.0) + CGFloat(member.y) - (CGFloat(member.h) / 2.0)
+
+            // Convert to preview coordinates (AppKit Y=0 is bottom, canvas Y=0 is top)
+            let x = offsetX + leftEdge * scale
+            let y = offsetY + scaledH - (topEdge + CGFloat(member.h)) * scale
             let w = CGFloat(member.w) * scale
             let h = CGFloat(member.h) * scale
 

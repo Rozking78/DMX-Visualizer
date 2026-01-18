@@ -79,46 +79,12 @@ static NSString* const kDisplayShaderSource = @R"(
                                       texture2d<float> tex [[texture(0)]],
                                       sampler smp [[sampler(0)]],
                                       constant DisplayParams& params [[buffer(0)]]) {
-        // Screen position in clip space (-1 to 1)
         float2 screenUV = in.texCoord;
-        float2 screenPos = float2(screenUV.x * 2.0 - 1.0, (1.0 - screenUV.y) * 2.0 - 1.0);
 
-        // DEBUG: Show red border if ANY warp offset is non-zero
-        bool hasWarp = length(params.warpTL) > 0.001 ||
-                       length(params.warpTR) > 0.001 ||
-                       length(params.warpBL) > 0.001 ||
-                       length(params.warpBR) > 0.001;
-
-        // If warp is active, show a 50-pixel red border on all edges (for testing)
-        if (hasWarp) {
-            float borderSize = 50.0 / params.outputWidth;  // 50 pixels as fraction
-            if (screenUV.x < borderSize || screenUV.x > 1.0 - borderSize ||
-                screenUV.y < borderSize || screenUV.y > 1.0 - borderSize) {
-                return float4(1.0, 0.0, 0.0, 1.0);  // RED border when warp active
-            }
-        }
-
-        // Define the warped quad corners (where content should appear)
-        // Warp offsets push corners inward (positive = toward center)
-        float2 warpedTL = float2(-1.0, 1.0) + params.warpTL;
-        float2 warpedTR = float2(1.0, 1.0) + params.warpTR;
-        float2 warpedBL = float2(-1.0, -1.0) + params.warpBL;
-        float2 warpedBR = float2(1.0, -1.0) + params.warpBR;
-
-        // Check if this screen pixel is inside the warped quad
-        if (!pointInQuad(screenPos, warpedTL, warpedTR, warpedBR, warpedBL)) {
-            // Outside the warped region - render GREEN for debugging
-            return float4(0.0, 1.0, 0.0, 1.0);
-        }
-
-        // Inside the warped region - use the SCREEN UV to sample the texture
-        // This means the content is NOT distorted, just masked by the keystone shape
-        // Apply crop to get final source UV
+        // Apply crop region to sample from canvas texture
         float2 sourceUV;
         sourceUV.x = params.cropX + screenUV.x * params.cropW;
         sourceUV.y = params.cropY + screenUV.y * params.cropH;
-
-        // Clamp and sample
         sourceUV = clamp(sourceUV, 0.0, 1.0);
         return tex.sample(smp, sourceUV);
     }
