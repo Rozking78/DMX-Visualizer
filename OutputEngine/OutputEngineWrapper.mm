@@ -185,7 +185,9 @@
                         params.warpCurvature,
                         params.lensK1, params.lensK2,
                         params.lensCenterX, params.lensCenterY,
-                        params.activeCorner);
+                        params.activeCorner,
+                        params.enableEdgeBlend, params.enableWarp,
+                        params.enableLensCorrection, params.enableCurveWarp);
 }
 
 - (void)setIntensity:(float)intensity {
@@ -358,11 +360,21 @@
                         params.warpCurvature,
                         params.lensK1, params.lensK2,
                         params.lensCenterX, params.lensCenterY,
-                        params.activeCorner);
+                        params.activeCorner,
+                        params.enableEdgeBlend, params.enableWarp,
+                        params.enableLensCorrection, params.enableCurveWarp);
 }
 
 - (void)setIntensity:(float)intensity {
     if (_impl) _impl->setIntensity(intensity);
+}
+
+- (void)setTargetFrameRate:(float)fps {
+    if (_impl) _impl->setTargetFrameRate(fps);
+}
+
+- (float)targetFrameRate {
+    return _impl ? _impl->targetFrameRate() : 0.0f;
 }
 
 - (void)setLegacyMode:(BOOL)enabled {

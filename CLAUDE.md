@@ -1,5 +1,14 @@
 # DMX Visualizer - Claude Context
 
+## CRITICAL RULE
+
+**ALWAYS ASK BEFORE MODIFYING CODE.** Before using Edit, Write, git commands, or any action that changes files:
+1. State what you're about to do
+2. Ask "Should I proceed?"
+3. Wait for explicit yes/no
+
+NO EXCEPTIONS. Do not treat problem descriptions as implicit permission to act.
+
 ## Before Starting Work
 
 Read the ecosystem documentation:

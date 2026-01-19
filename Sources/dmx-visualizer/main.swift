@@ -2142,6 +2142,12 @@ final class MetalRenderView: MTKView {
     var syphonEnabled: Bool = false  // Syphon removed - use NDI instead
     var ndiEnabled: Bool = false
 
+    // Live preview optimization - reusable buffers and busy flag
+    private var previewBuffer: [UInt8]?
+    private var previewFullBuffer: [UInt8]?
+    private var previewBusy: Bool = false
+    private let previewScale: Int = 4  // Capture at 1/4 resolution (480x270 for 1920x1080)
+
     // Web server helper properties
     var fixtureCount: Int {
         return controller.objects.count
@@ -2234,6 +2240,74 @@ final class MetalRenderView: MTKView {
             provider: provider,
             decode: nil,
             shouldInterpolate: false,
+            intent: .defaultIntent
+        ) else { return nil }
+
+        return NSImage(cgImage: cgImage, size: NSSize(width: width, height: height))
+    }
+
+    /// Optimized capture for live preview - uses reusable buffer and reduced resolution
+    func capturePreviewFrame() -> NSImage? {
+        // Skip if already busy capturing
+        guard !previewBusy else { return nil }
+        guard let texture = offscreenTexture else { return nil }
+
+        previewBusy = true
+        defer { previewBusy = false }
+
+        // Capture at reduced resolution (1/4 scale)
+        let width = texture.width / previewScale
+        let height = texture.height / previewScale
+        let bytesPerRow = width * 4
+        let dataSize = bytesPerRow * height
+
+        // Reuse buffer if correct size, otherwise allocate once
+        if previewBuffer == nil || previewBuffer!.count != dataSize {
+            previewBuffer = [UInt8](repeating: 0, count: dataSize)
+        }
+
+        // Read scaled region from texture
+        // Note: Metal getBytes doesn't scale, so we read full texture and scale via CGImage
+        // For efficiency, we create a scaled blit - but simplest approach is to read a smaller region
+        // Since the texture is the canvas, we sample from top-left corner at reduced stride
+        let fullBytesPerRow = texture.width * 4
+        let fullDataSize = fullBytesPerRow * texture.height
+
+        // Reuse full buffer if correct size, otherwise allocate once
+        if previewFullBuffer == nil || previewFullBuffer!.count != fullDataSize {
+            previewFullBuffer = [UInt8](repeating: 0, count: fullDataSize)
+        }
+        texture.getBytes(&previewFullBuffer!, bytesPerRow: fullBytesPerRow,
+                         from: MTLRegionMake2D(0, 0, texture.width, texture.height),
+                         mipmapLevel: 0)
+
+        // Downsample by picking every Nth pixel
+        for y in 0..<height {
+            for x in 0..<width {
+                let srcX = x * previewScale
+                let srcY = y * previewScale
+                let srcIdx = srcY * fullBytesPerRow + srcX * 4
+                let dstIdx = y * bytesPerRow + x * 4
+                previewBuffer![dstIdx] = previewFullBuffer![srcIdx]
+                previewBuffer![dstIdx + 1] = previewFullBuffer![srcIdx + 1]
+                previewBuffer![dstIdx + 2] = previewFullBuffer![srcIdx + 2]
+                previewBuffer![dstIdx + 3] = previewFullBuffer![srcIdx + 3]
+            }
+        }
+
+        // Create CGImage from scaled pixel data
+        guard let provider = CGDataProvider(data: Data(previewBuffer!) as CFData) else { return nil }
+        guard let cgImage = CGImage(
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bitsPerPixel: 32,
+            bytesPerRow: bytesPerRow,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue),
+            provider: provider,
+            decode: nil,
+            shouldInterpolate: true,
             intent: .defaultIntent
         ) else { return nil }
 

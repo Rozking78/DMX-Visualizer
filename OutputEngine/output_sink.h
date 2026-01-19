@@ -340,8 +340,14 @@ protected:
         // Corner overlay (0=none, 1=TL, 2=TR, 3=BL, 4=BR)
         int activeCorner = 0;
 
+        // Per-output shader processing toggles (for CPU/GPU optimization)
+        bool enableEdgeBlend = true;       // Enable edge blend feathering
+        bool enableWarp = true;            // Enable 8-point warp
+        bool enableLensCorrection = true;  // Enable lens distortion correction
+        bool enableCurveWarp = true;       // Enable curvature warp
+
         bool hasBlending() const {
-            return featherLeft > 0 || featherRight > 0 || featherTop > 0 || featherBottom > 0;
+            return enableEdgeBlend && (featherLeft > 0 || featherRight > 0 || featherTop > 0 || featherBottom > 0);
         }
     };
 
@@ -381,13 +387,16 @@ public:
                       float warpBRX = 0.0f, float warpBRY = 0.0f,
                       float warpCurvature = 0.0f,
                       float lensK1 = 0.0f, float lensK2 = 0.0f, float lensCX = 0.5f, float lensCY = 0.5f,
-                      int activeCorner = 0) {
+                      int activeCorner = 0,
+                      bool enableEdgeBlend = true, bool enableWarp = true,
+                      bool enableLensCorrection = true, bool enableCurveWarp = true) {
         current_edge_blend_ = {featherL, featherR, featherT, featherB, gamma, power, blackLevel, gammaR, gammaG, gammaB,
                                warpTLX, warpTLY, warpTMX, warpTMY, warpTRX, warpTRY,
                                warpMLX, warpMLY, warpMRX, warpMRY,
                                warpBLX, warpBLY, warpBMX, warpBMY, warpBRX, warpBRY,
                                warpCurvature,
-                               lensK1, lensK2, lensCX, lensCY, activeCorner};
+                               lensK1, lensK2, lensCX, lensCY, activeCorner,
+                               enableEdgeBlend, enableWarp, enableLensCorrection, enableCurveWarp};
     }
 
     void setPendingEdgeBlend(float featherL, float featherR, float featherT, float featherB,

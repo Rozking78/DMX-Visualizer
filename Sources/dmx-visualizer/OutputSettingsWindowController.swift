@@ -16,8 +16,12 @@ class CanvasNDIManager {
     private var ndiOutput: GDNDIOutput?
     private var captureTimer: Timer?
     private(set) var isEnabled: Bool = false
-    private var outputWidth: Int = 1920
-    private var outputHeight: Int = 1080
+    private var outputWidth: Int = 960
+    private var outputHeight: Int = 540
+
+    // Reusable bitmap buffer (avoid allocation every frame)
+    private var reusableBitmapRep: NSBitmapImageRep?
+    private var isCapturing: Bool = false  // Skip if busy
 
     // Callback for UI updates
     var onStateChanged: ((Bool) -> Void)?
@@ -52,8 +56,8 @@ class CanvasNDIManager {
         let canvasH = CGFloat(UserDefaults.standard.integer(forKey: "canvasHeight").nonZero ?? 2000)
         let canvasAspect = canvasW / canvasH
 
-        let maxWidth: CGFloat = 1920
-        let maxHeight: CGFloat = 1080
+        let maxWidth: CGFloat = 960
+        let maxHeight: CGFloat = 540
         let maxAspect = maxWidth / maxHeight
 
         if canvasAspect > maxAspect {
@@ -79,8 +83,8 @@ class CanvasNDIManager {
         UserDefaults.standard.set(true, forKey: "canvasNDIEnabled")
         NSLog("CanvasNDIManager: Started 'GeoDraw Canvas Preview' at \(outputWidth)x\(outputHeight)")
 
-        // Start capture timer at 30fps - captures from main render view
-        captureTimer = Timer.scheduledTimer(withTimeInterval: 1.0/30.0, repeats: true) { [weak self] _ in
+        // Start capture timer at 10fps - captures from main render view (reduced for CPU)
+        captureTimer = Timer.scheduledTimer(withTimeInterval: 1.0/10.0, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.captureAndSend()
             }
@@ -95,6 +99,7 @@ class CanvasNDIManager {
 
         ndiOutput?.stop()
         ndiOutput = nil
+        reusableBitmapRep = nil  // Free memory
 
         isEnabled = false
         UserDefaults.standard.set(false, forKey: "canvasNDIEnabled")
@@ -106,32 +111,45 @@ class CanvasNDIManager {
     private func captureAndSend() {
         guard let ndi = ndiOutput, ndi.isRunning() else { return }
 
+        // Skip if previous capture still processing
+        guard !isCapturing else { return }
+        isCapturing = true
+        defer { isCapturing = false }
+
         // Capture from the main render view (works even when Output Settings is closed)
         guard let image = sharedMetalRenderView?.captureCurrentFrame() else { return }
 
-        // Convert NSImage to bitmap data
+        // Convert NSImage to bitmap data (reuses buffer)
         guard let bitmapRep = convertToBitmap(image: image, width: outputWidth, height: outputHeight) else { return }
         guard let data = bitmapRep.bitmapData else { return }
 
-        // Send to NDI
+        // Send to NDI at 10fps
         let timestamp = UInt64(CACurrentMediaTime() * 1_000_000_000)
-        _ = ndi.pushPixelData(data, width: UInt32(outputWidth), height: UInt32(outputHeight), timestamp: timestamp, frameRate: 30)
+        _ = ndi.pushPixelData(data, width: UInt32(outputWidth), height: UInt32(outputHeight), timestamp: timestamp, frameRate: 10)
     }
 
     private func convertToBitmap(image: NSImage, width: Int, height: Int) -> NSBitmapImageRep? {
-        guard let bitmapRep = NSBitmapImageRep(
-            bitmapDataPlanes: nil,
-            pixelsWide: width,
-            pixelsHigh: height,
-            bitsPerSample: 8,
-            samplesPerPixel: 4,
-            hasAlpha: true,
-            isPlanar: false,
-            colorSpaceName: .deviceRGB,
-            bitmapFormat: [.thirtyTwoBitLittleEndian],
-            bytesPerRow: width * 4,
-            bitsPerPixel: 32
-        ) else { return nil }
+        // Reuse existing bitmap if dimensions match, otherwise create new one
+        let bitmapRep: NSBitmapImageRep
+        if let existing = reusableBitmapRep, existing.pixelsWide == width, existing.pixelsHigh == height {
+            bitmapRep = existing
+        } else {
+            guard let newRep = NSBitmapImageRep(
+                bitmapDataPlanes: nil,
+                pixelsWide: width,
+                pixelsHigh: height,
+                bitsPerSample: 8,
+                samplesPerPixel: 4,
+                hasAlpha: true,
+                isPlanar: false,
+                colorSpaceName: .deviceRGB,
+                bitmapFormat: [.thirtyTwoBitLittleEndian],
+                bytesPerRow: width * 4,
+                bitsPerPixel: 32
+            ) else { return nil }
+            reusableBitmapRep = newRep
+            bitmapRep = newRep
+        }
 
         guard let context = NSGraphicsContext(bitmapImageRep: bitmapRep) else { return nil }
 
@@ -310,7 +328,7 @@ class DraggableCornerPopupView: NSView {
 
 // MARK: - Output Settings Window Controller
 
-class OutputSettingsWindowController: NSWindowController, NSWindowDelegate {
+class OutputSettingsWindowController: NSWindowController, NSWindowDelegate, NSTextFieldDelegate {
 
     private var outputs: [ManagedOutput] = []
     private var selectedOutputIndex: Int = -1
@@ -409,6 +427,13 @@ class OutputSettingsWindowController: NSWindowController, NSWindowDelegate {
     private var dmxAddressField: NSTextField!
     private var dmxUniverseStepper: NSStepper!
     private var dmxAddressStepper: NSStepper!
+
+    // Processing controls (frame rate + shader toggles)
+    private var frameRatePopup: NSPopUpButton!
+    private var enableEdgeBlendCheckbox: NSButton!
+    private var enableWarpCheckbox: NSButton!
+    private var enableLensCheckbox: NSButton!
+    private var enableCurveCheckbox: NSButton!
 
     // Live preview
     private var livePreviewImageView: NSImageView?
@@ -778,13 +803,13 @@ class OutputSettingsWindowController: NSWindowController, NSWindowDelegate {
         panel.addSubview(configHeader)
         y -= 30
 
-        // Config box with retro styling (expanded for geometric correction + curvature + DMX patch)
-        let configBox = NSView(frame: NSRect(x: 15, y: y - 630, width: 295, height: 630))
+        // Config box with retro styling (expanded for geometric correction + curvature + DMX patch + processing)
+        let configBox = NSView(frame: NSRect(x: 15, y: y - 700, width: 295, height: 700))
         RetroTheme.styleCard(configBox, cornerRadius: 8)
         RetroTheme.applyNeonBorder(to: configBox.layer!, color: RetroTheme.sectionConfig.withAlphaComponent(0.3), width: 1)
         panel.addSubview(configBox)
 
-        var cy: CGFloat = 600
+        var cy: CGFloat = 670
 
         // Selected output header
         selectedOutputLabel = RetroTheme.makeLabel("▸ SELECT AN OUTPUT", style: .header, size: 11, color: RetroTheme.textSecondary)
@@ -836,6 +861,7 @@ class OutputSettingsWindowController: NSWindowController, NSWindowDelegate {
         outputWidthField.isEnabled = false
         outputWidthField.target = self
         outputWidthField.action = #selector(outputResolutionChanged(_:))
+        outputWidthField.delegate = self  // Also handle focus loss
         configBox.addSubview(outputWidthField)
 
         widthStepper = NSStepper()
@@ -861,6 +887,7 @@ class OutputSettingsWindowController: NSWindowController, NSWindowDelegate {
         outputHeightField.isEnabled = false
         outputHeightField.target = self
         outputHeightField.action = #selector(outputResolutionChanged(_:))
+        outputHeightField.delegate = self  // Also handle focus loss
         configBox.addSubview(outputHeightField)
 
         heightStepper = NSStepper()
@@ -968,6 +995,68 @@ class OutputSettingsWindowController: NSWindowController, NSWindowDelegate {
         dmxPatchInfo.frame = NSRect(x: 12, y: cy, width: 280, height: 12)
         configBox.addSubview(dmxPatchInfo)
         cy -= 22
+
+        // PROCESSING section header
+        let procHeader = RetroTheme.makeLabel("◆ PROCESSING", style: .header, size: 9, color: RetroTheme.neonYellow)
+        procHeader.frame = NSRect(x: 12, y: cy, width: 100, height: 14)
+        configBox.addSubview(procHeader)
+        cy -= 22
+
+        // Row 1: Frame rate dropdown + first two shader toggles
+        let fpsLabel = RetroTheme.makeLabel("FPS:", style: .header, size: 9, color: RetroTheme.neonYellow)
+        fpsLabel.frame = NSRect(x: 12, y: cy + 2, width: 30, height: 14)
+        configBox.addSubview(fpsLabel)
+
+        frameRatePopup = NSPopUpButton(frame: NSRect(x: 40, y: cy - 1, width: 70, height: 22), pullsDown: false)
+        frameRatePopup.font = RetroTheme.headerFont(size: 10)
+        frameRatePopup.addItems(withTitles: ["Unlimited", "30", "60"])
+        frameRatePopup.target = self
+        frameRatePopup.action = #selector(frameRateChanged(_:))
+        frameRatePopup.isEnabled = false
+        configBox.addSubview(frameRatePopup)
+
+        enableEdgeBlendCheckbox = NSButton(checkboxWithTitle: "", target: self, action: #selector(shaderToggleChanged(_:)))
+        enableEdgeBlendCheckbox.frame = NSRect(x: 115, y: cy, width: 85, height: 18)
+        enableEdgeBlendCheckbox.attributedTitle = NSAttributedString(
+            string: "Edge Blend",
+            attributes: [.font: RetroTheme.headerFont(size: 9), .foregroundColor: RetroTheme.neonOrange]
+        )
+        enableEdgeBlendCheckbox.state = .on
+        enableEdgeBlendCheckbox.isEnabled = false
+        configBox.addSubview(enableEdgeBlendCheckbox)
+
+        enableWarpCheckbox = NSButton(checkboxWithTitle: "", target: self, action: #selector(shaderToggleChanged(_:)))
+        enableWarpCheckbox.frame = NSRect(x: 205, y: cy, width: 55, height: 18)
+        enableWarpCheckbox.attributedTitle = NSAttributedString(
+            string: "Warp",
+            attributes: [.font: RetroTheme.headerFont(size: 9), .foregroundColor: RetroTheme.neonPurple]
+        )
+        enableWarpCheckbox.state = .on
+        enableWarpCheckbox.isEnabled = false
+        configBox.addSubview(enableWarpCheckbox)
+        cy -= 20
+
+        // Row 2: Remaining shader toggles
+        enableLensCheckbox = NSButton(checkboxWithTitle: "", target: self, action: #selector(shaderToggleChanged(_:)))
+        enableLensCheckbox.frame = NSRect(x: 115, y: cy, width: 95, height: 18)
+        enableLensCheckbox.attributedTitle = NSAttributedString(
+            string: "Lens",
+            attributes: [.font: RetroTheme.headerFont(size: 9), .foregroundColor: RetroTheme.neonCyan]
+        )
+        enableLensCheckbox.state = .on
+        enableLensCheckbox.isEnabled = false
+        configBox.addSubview(enableLensCheckbox)
+
+        enableCurveCheckbox = NSButton(checkboxWithTitle: "", target: self, action: #selector(shaderToggleChanged(_:)))
+        enableCurveCheckbox.frame = NSRect(x: 175, y: cy, width: 70, height: 18)
+        enableCurveCheckbox.attributedTitle = NSAttributedString(
+            string: "Curve",
+            attributes: [.font: RetroTheme.headerFont(size: 9), .foregroundColor: RetroTheme.neonMagenta]
+        )
+        enableCurveCheckbox.state = .on
+        enableCurveCheckbox.isEnabled = false
+        configBox.addSubview(enableCurveCheckbox)
+        cy -= 24
 
         // Edge Blend section header with neon styling
         let blendHeader = RetroTheme.makeLabel("◆ EDGE BLEND OVERLAP (PX)", style: .header, size: 9, color: RetroTheme.sectionBlend)
@@ -2624,6 +2713,28 @@ class OutputSettingsWindowController: NSWindowController, NSWindowDelegate {
             dmxUniverseStepper.isEnabled = true
             dmxAddressStepper.isEnabled = true
 
+            // Processing controls (frame rate + shader toggles)
+            let fps = output.config.targetFrameRate
+            if fps == 0 {
+                frameRatePopup.selectItem(withTitle: "Unlimited")
+            } else if fps == 30 {
+                frameRatePopup.selectItem(withTitle: "30")
+            } else if fps == 60 {
+                frameRatePopup.selectItem(withTitle: "60")
+            } else {
+                frameRatePopup.selectItem(withTitle: "Unlimited")
+            }
+            frameRatePopup.isEnabled = true
+
+            enableEdgeBlendCheckbox.state = output.config.enableEdgeBlend ? .on : .off
+            enableWarpCheckbox.state = output.config.enableWarp ? .on : .off
+            enableLensCheckbox.state = output.config.enableLensCorrection ? .on : .off
+            enableCurveCheckbox.state = output.config.enableCurveWarp ? .on : .off
+            enableEdgeBlendCheckbox.isEnabled = true
+            enableWarpCheckbox.isEnabled = true
+            enableLensCheckbox.isEnabled = true
+            enableCurveCheckbox.isEnabled = true
+
             // Edge blend values - show stored values from config (not auto-calculated)
             let left = Int(output.config.edgeBlendLeft)
             let right = Int(output.config.edgeBlendRight)
@@ -2816,6 +2927,19 @@ class OutputSettingsWindowController: NSWindowController, NSWindowDelegate {
             dmxAddressField.isEnabled = false
             dmxUniverseStepper.isEnabled = false
             dmxAddressStepper.isEnabled = false
+
+            // Reset processing controls
+            frameRatePopup.selectItem(at: 0)  // "Unlimited"
+            frameRatePopup.isEnabled = false
+            enableEdgeBlendCheckbox.state = .on
+            enableEdgeBlendCheckbox.isEnabled = false
+            enableWarpCheckbox.state = .on
+            enableWarpCheckbox.isEnabled = false
+            enableLensCheckbox.state = .on
+            enableLensCheckbox.isEnabled = false
+            enableCurveCheckbox.state = .on
+            enableCurveCheckbox.isEnabled = false
+
             blendLeftField.stringValue = "0"
             blendRightField.stringValue = "0"
             blendTopField.stringValue = "0"
@@ -3629,6 +3753,37 @@ class OutputSettingsWindowController: NSWindowController, NSWindowDelegate {
         OutputManager.shared.updateDMXPatch(id: output.id, universe: universe, address: address)
     }
 
+    @objc private func frameRateChanged(_ sender: NSPopUpButton) {
+        guard selectedOutputIndex >= 0 && selectedOutputIndex < outputs.count else { return }
+        let output = outputs[selectedOutputIndex]
+
+        let selectedTitle = sender.titleOfSelectedItem ?? "Unlimited"
+        let fps: Float
+        switch selectedTitle {
+        case "30": fps = 30
+        case "60": fps = 60
+        default: fps = 0  // Unlimited
+        }
+
+        OutputManager.shared.setOutputFrameRate(id: output.id, fps: fps)
+    }
+
+    @objc private func shaderToggleChanged(_ sender: NSButton) {
+        guard selectedOutputIndex >= 0 && selectedOutputIndex < outputs.count else { return }
+        let output = outputs[selectedOutputIndex]
+
+        // Determine which checkbox was toggled
+        if sender === enableEdgeBlendCheckbox {
+            OutputManager.shared.setEdgeBlendEnabled(id: output.id, enabled: sender.state == .on)
+        } else if sender === enableWarpCheckbox {
+            OutputManager.shared.setWarpEnabled(id: output.id, enabled: sender.state == .on)
+        } else if sender === enableLensCheckbox {
+            OutputManager.shared.setLensCorrectionEnabled(id: output.id, enabled: sender.state == .on)
+        } else if sender === enableCurveCheckbox {
+            OutputManager.shared.setCurveWarpEnabled(id: output.id, enabled: sender.state == .on)
+        }
+    }
+
     @objc private func outputEnabledChanged(_ sender: NSButton) {
         guard selectedOutputIndex >= 0 && selectedOutputIndex < outputs.count else { return }
         let output = outputs[selectedOutputIndex]
@@ -3647,11 +3802,16 @@ class OutputSettingsWindowController: NSWindowController, NSWindowDelegate {
     }
 
     @objc private func outputResolutionChanged(_ sender: NSTextField) {
-        guard selectedOutputIndex >= 0 && selectedOutputIndex < outputs.count else { return }
+        guard selectedOutputIndex >= 0 && selectedOutputIndex < outputs.count else {
+            NSLog("Resolution changed but no output selected")
+            return
+        }
         let output = outputs[selectedOutputIndex]
 
         let width = UInt32(outputWidthField.stringValue) ?? 1920
         let height = UInt32(outputHeightField.stringValue) ?? 1080
+
+        NSLog("Resolution changed to %dx%d for output %@ (type: %d)", width, height, output.name, output.type.rawValue)
 
         // Sync steppers with text fields
         widthStepper.doubleValue = Double(width)
@@ -3666,7 +3826,13 @@ class OutputSettingsWindowController: NSWindowController, NSWindowDelegate {
 
         // Refresh to update member outputs list
         outputs = OutputManager.shared.getAllOutputs()
-        updateMemberOutputsList()
+
+        // Debug: log what the output now reports
+        if let updatedOutput = outputs.first(where: { $0.id == output.id }) {
+            NSLog("After setResolution: output reports %dx%d", updatedOutput.width, updatedOutput.height)
+        }
+
+        // Don't call updateMemberOutputsList here - it would trigger another refresh
         updateCanvasPreview()
     }
 
@@ -3712,6 +3878,17 @@ class OutputSettingsWindowController: NSWindowController, NSWindowDelegate {
         outputs = OutputManager.shared.getAllOutputs()
         updateMemberOutputsList()
         updateCanvasPreview()
+    }
+
+    // MARK: - NSTextFieldDelegate
+
+    func controlTextDidEndEditing(_ notification: Notification) {
+        guard let textField = notification.object as? NSTextField else { return }
+
+        // Handle resolution field edits when user clicks away (not just Enter)
+        if textField === outputWidthField || textField === outputHeightField {
+            outputResolutionChanged(textField)
+        }
     }
 
     @objc private func displaySelectionChanged(_ sender: NSPopUpButton) {
@@ -4687,7 +4864,7 @@ class OutputSettingsWindowController: NSWindowController, NSWindowDelegate {
         guard let imageView = popOutImageView else { return }
         guard let renderView = sharedMetalRenderView else { return }
 
-        if let image = renderView.captureCurrentFrame() {
+        if let image = renderView.capturePreviewFrame() {
             imageView.image = image
         }
     }
@@ -4815,14 +4992,31 @@ class OutputSettingsWindowController: NSWindowController, NSWindowDelegate {
     }
 
     private func updateLivePreviewImage() {
-        guard let imageView = livePreviewImageView else { return }
-        guard let renderView = sharedMetalRenderView else { return }
+        guard let renderView = sharedMetalRenderView else {
+            NSLog("LivePreview: No sharedMetalRenderView")
+            return
+        }
 
-        if let image = renderView.captureCurrentFrame() {
+        // Find imageView from hierarchy (reference can become stale when updateCanvasPreview recreates views)
+        guard let canvasBg = canvasPreview.subviews.first else {
+            NSLog("LivePreview: No canvasBg subview")
+            return
+        }
+
+        guard let imageView = canvasBg.subviews.first as? NSImageView else {
+            NSLog("LivePreview: No NSImageView found in canvasBg (has %d subviews, first is %@)",
+                  canvasBg.subviews.count,
+                  canvasBg.subviews.first.map { String(describing: type(of: $0)) } ?? "nil")
+            return
+        }
+
+        // Use optimized preview capture (reusable buffer, 1/4 resolution, skip if busy)
+        if let image = renderView.capturePreviewFrame() {
             imageView.image = image
             // Also update pop-out window if visible
             popOutImageView?.image = image
         }
+        // Note: capturePreviewFrame returns nil when busy - this is expected and helps reduce CPU
     }
 
     // MARK: - Corner Popup for Quad Warp

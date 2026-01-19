@@ -68,6 +68,11 @@ typedef NS_ENUM(NSInteger, GDOutputStatus) {
 @property (nonatomic) float warpCurvature; // Curvature amount (0 = linear, + = convex, - = concave)
 // Corner overlay (0=none, 1=TL, 2=TR, 3=BL, 4=BR)
 @property (nonatomic) int activeCorner;
+// Per-output shader processing toggles (for CPU/GPU optimization)
+@property (nonatomic) BOOL enableEdgeBlend;      // Enable edge blend feathering
+@property (nonatomic) BOOL enableWarp;           // Enable 8-point warp
+@property (nonatomic) BOOL enableLensCorrection; // Enable lens distortion correction
+@property (nonatomic) BOOL enableCurveWarp;      // Enable curvature warp
 + (instancetype)disabled;
 - (instancetype)initWithLeft:(float)left right:(float)right top:(float)top bottom:(float)bottom;
 @end
@@ -166,6 +171,10 @@ typedef NS_ENUM(NSInteger, GDOutputStatus) {
 
 // Intensity (0-1, default 1.0 = full brightness)
 - (void)setIntensity:(float)intensity;
+
+// Target frame rate throttling (0 = unlimited, otherwise target fps)
+- (void)setTargetFrameRate:(float)fps;
+- (float)targetFrameRate;
 
 // Legacy mode (synchronous sending, more compatible with some receivers)
 - (void)setLegacyMode:(BOOL)enabled;

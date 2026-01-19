@@ -71,6 +71,10 @@ public:
     void setLegacyMode(bool enabled);
     bool isLegacyMode() const { return legacy_mode_.load(); }
 
+    // Target frame rate throttling (0 = unlimited)
+    void setTargetFrameRate(float fps);
+    float targetFrameRate() const { return target_frame_rate_.load(); }
+
 private:
     // Async send thread
     void sendLoop();
@@ -103,6 +107,7 @@ private:
     std::atomic<bool> should_stop_{false};
     std::atomic<OutputStatus> status_{OutputStatus::Stopped};
     std::atomic<bool> legacy_mode_{false};  // Synchronous sending mode
+    std::atomic<float> target_frame_rate_{0.0f};  // 0 = unlimited
 
     // Frame info
     std::atomic<uint32_t> width_{0};

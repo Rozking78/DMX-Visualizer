@@ -579,6 +579,15 @@ void NDIOutput::setLegacyMode(bool enabled) {
     NSLog(@"NDIOutput: Legacy mode %s", enabled ? "ENABLED (sync send, no clock)" : "DISABLED (async send)");
 }
 
+void NDIOutput::setTargetFrameRate(float fps) {
+    target_frame_rate_.store(fps);
+    if (fps > 0) {
+        NSLog(@"NDIOutput: Target frame rate set to %.1f fps", fps);
+    } else {
+        NSLog(@"NDIOutput: Target frame rate set to unlimited");
+    }
+}
+
 bool NDIOutput::start() {
     if (running_.load()) {
         return true;
@@ -1085,6 +1094,9 @@ bool NDIOutput::pushPixelData(const uint8_t* data, uint32_t width, uint32_t heig
 void NDIOutput::sendLoop() {
     NSLog(@"NDIOutput: Send loop started");
 
+    // Frame rate throttling
+    auto lastSendTime = std::chrono::high_resolution_clock::now();
+
     while (!should_stop_.load()) {
         PixelFrame pixelFrame;
 
@@ -1109,6 +1121,21 @@ void NDIOutput::sendLoop() {
             continue;
         }
 
+        // Frame rate throttling: check if enough time has passed
+        float targetFps = target_frame_rate_.load();
+        if (targetFps > 0.0f) {
+            auto now = std::chrono::high_resolution_clock::now();
+            auto elapsed = std::chrono::duration<float, std::milli>(now - lastSendTime).count();
+            float targetIntervalMs = 1000.0f / targetFps;
+
+            if (elapsed < targetIntervalMs) {
+                // Not enough time passed - skip this frame
+                frames_dropped_.fetch_add(1);
+                continue;
+            }
+            lastSendTime = now;
+        }
+
         // Thread-safe capture of sender
         NDIlib_send_instance_t sender = sender_;
         if (!sender) {
@@ -1123,8 +1150,8 @@ void NDIOutput::sendLoop() {
         ndi_frame.line_stride_in_bytes = pixelFrame.width * 4;
         ndi_frame.p_data = pixelFrame.data.data();
 
-        // Calculate frame rate
-        float fps = pixelFrame.frame_rate > 0 ? pixelFrame.frame_rate : 59.94f;
+        // Calculate frame rate - use target if set, otherwise source
+        float fps = targetFps > 0 ? targetFps : (pixelFrame.frame_rate > 0 ? pixelFrame.frame_rate : 59.94f);
         if (fps > 59.9f && fps < 60.1f) {
             ndi_frame.frame_rate_N = 60000;
             ndi_frame.frame_rate_D = 1001;

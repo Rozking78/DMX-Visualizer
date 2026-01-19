@@ -104,6 +104,15 @@ struct OutputConfig: Codable {
     // Per-output intensity from DMX (runtime, not persisted via DMX but set by DMX)
     var outputIntensity: Float  // 0-1.0, default 1.0
 
+    // Per-output frame rate control (0 = unlimited/match source)
+    var targetFrameRate: Float
+
+    // Per-output shader processing toggles (for CPU/GPU optimization)
+    var enableEdgeBlend: Bool       // Edge blend feathering
+    var enableWarp: Bool            // 8-point warp (keystone)
+    var enableLensCorrection: Bool  // Pincushion/barrel correction
+    var enableCurveWarp: Bool       // Spherical curvature mapping
+
     static func defaultDisplay(displayId: UInt32, name: String, width: UInt32? = nil, height: UInt32? = nil) -> OutputConfig {
         OutputConfig(
             id: UUID(),
@@ -129,7 +138,12 @@ struct OutputConfig: Codable {
             warpCurvature: 0,
             dmxUniverse: 0,  // 0 = DMX control disabled
             dmxAddress: 1,   // Default address
-            outputIntensity: 1.0  // Full brightness by default
+            outputIntensity: 1.0,  // Full brightness by default
+            targetFrameRate: 0,    // 0 = unlimited
+            enableEdgeBlend: true,
+            enableWarp: true,
+            enableLensCorrection: true,
+            enableCurveWarp: true
         )
     }
 
@@ -158,7 +172,12 @@ struct OutputConfig: Codable {
             warpCurvature: 0,
             dmxUniverse: 0,  // 0 = DMX control disabled
             dmxAddress: 1,   // Default address
-            outputIntensity: 1.0  // Full brightness by default
+            outputIntensity: 1.0,  // Full brightness by default
+            targetFrameRate: 0,    // 0 = unlimited
+            enableEdgeBlend: true,
+            enableWarp: true,
+            enableLensCorrection: true,
+            enableCurveWarp: true
         )
     }
 }
@@ -311,6 +330,72 @@ final class OutputManager: @unchecked Sendable {
     func updateOutputIntensity(id: UUID, intensity: Float) {
         guard let output = outputs[id] else { return }
         output.config.outputIntensity = intensity
+    }
+
+    // MARK: - Per-Output Frame Rate & Shader Control
+
+    /// Set target frame rate for an output (0 = unlimited)
+    func setOutputFrameRate(id: UUID, fps: Float) {
+        guard let output = outputs[id] else { return }
+        output.config.targetFrameRate = fps
+
+        // Apply to NDI output if running
+        if output.type == .NDI, let ndi = output.ndiOutput {
+            ndi.setTargetFrameRate(fps)
+        }
+
+        saveOutputConfigs()
+        let fpsStr = fps == 0 ? "unlimited" : "\(Int(fps)) fps"
+        print("OutputManager: Set frame rate for '\(output.config.name)' to \(fpsStr)")
+    }
+
+    /// Toggle edge blend shader for an output
+    func setEdgeBlendEnabled(id: UUID, enabled: Bool) {
+        guard let output = outputs[id] else { return }
+        output.config.enableEdgeBlend = enabled
+        saveOutputConfigs()
+        print("OutputManager: Edge blend \(enabled ? "enabled" : "disabled") for '\(output.config.name)'")
+    }
+
+    /// Toggle warp (8-point keystone) shader for an output
+    func setWarpEnabled(id: UUID, enabled: Bool) {
+        guard let output = outputs[id] else { return }
+        output.config.enableWarp = enabled
+        saveOutputConfigs()
+        print("OutputManager: Warp \(enabled ? "enabled" : "disabled") for '\(output.config.name)'")
+    }
+
+    /// Toggle lens correction shader for an output
+    func setLensCorrectionEnabled(id: UUID, enabled: Bool) {
+        guard let output = outputs[id] else { return }
+        output.config.enableLensCorrection = enabled
+        saveOutputConfigs()
+        print("OutputManager: Lens correction \(enabled ? "enabled" : "disabled") for '\(output.config.name)'")
+    }
+
+    /// Toggle curvature warp shader for an output
+    func setCurveWarpEnabled(id: UUID, enabled: Bool) {
+        guard let output = outputs[id] else { return }
+        output.config.enableCurveWarp = enabled
+        saveOutputConfigs()
+        print("OutputManager: Curve warp \(enabled ? "enabled" : "disabled") for '\(output.config.name)'")
+    }
+
+    /// Get shader states for an output (for UI)
+    func getShaderStates(id: UUID) -> (edgeBlend: Bool, warp: Bool, lens: Bool, curve: Bool)? {
+        guard let output = outputs[id] else { return nil }
+        return (
+            edgeBlend: output.config.enableEdgeBlend,
+            warp: output.config.enableWarp,
+            lens: output.config.enableLensCorrection,
+            curve: output.config.enableCurveWarp
+        )
+    }
+
+    /// Get target frame rate for an output
+    func getOutputFrameRate(id: UUID) -> Float? {
+        guard let output = outputs[id] else { return nil }
+        return output.config.targetFrameRate
     }
 
     // MARK: - Display Output Management
