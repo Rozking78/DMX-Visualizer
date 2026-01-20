@@ -2263,6 +2263,9 @@ class OutputSettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
 
     /// Auto-update edge blend for all outputs based on current positions
     private func autoUpdateAllEdgeBlends() {
+        // Only run if auto edge blending is enabled
+        guard blendEnabledCheck.state == .on else { return }
+
         for (i, output) in outputs.enumerated() {
             let (left, right, top, bottom) = calculateOverlapsForOutput(i)
 
@@ -3564,6 +3567,8 @@ class OutputSettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
 
     // Silent version for live updates during drag
     private func autoUpdateEdgeBlendSilent() {
+        // Only run if auto edge blending is enabled
+        guard blendEnabledCheck.state == .on else { return }
         guard selectedOutputIndex >= 0 && selectedOutputIndex < outputs.count else { return }
 
         let (left, right, top, bottom) = calculateOverlapsForOutput(selectedOutputIndex)
