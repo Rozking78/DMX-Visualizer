@@ -337,6 +337,7 @@ class OutputSettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
     private var canvasWidthField: NSTextField!
     private var canvasHeightField: NSTextField!
     private var canvasPreview: NSView!
+    private var memberOutputsScrollView: NSScrollView!
     private var memberOutputsView: NSView!
     private var scaleField: NSTextField!
     private var panXField: NSTextField!
@@ -689,43 +690,54 @@ class OutputSettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         RetroTheme.styleButton(applyOffsetBtn, color: RetroTheme.neonGreen)
         panel.addSubview(applyOffsetBtn)
 
-        y -= 30
+        y -= 28
 
-        memberOutputsView = NSView(frame: NSRect(x: 0, y: y - 130, width: 560, height: 130))
+        // Scrollable output list (supports more than 4 outputs)
+        let scrollViewHeight: CGFloat = 160
+        memberOutputsScrollView = NSScrollView(frame: NSRect(x: 0, y: y - scrollViewHeight, width: 560, height: scrollViewHeight))
+        memberOutputsScrollView.wantsLayer = true
+        memberOutputsScrollView.layer?.backgroundColor = RetroTheme.backgroundCard.cgColor
+        memberOutputsScrollView.layer?.cornerRadius = 8
+        memberOutputsScrollView.hasVerticalScroller = true
+        memberOutputsScrollView.hasHorizontalScroller = false
+        memberOutputsScrollView.autohidesScrollers = true
+        memberOutputsScrollView.borderType = .noBorder
+        memberOutputsScrollView.drawsBackground = false
+        RetroTheme.applyNeonBorder(to: memberOutputsScrollView.layer!, color: RetroTheme.sectionPositions.withAlphaComponent(0.3), width: 1)
+
+        memberOutputsView = NSView(frame: NSRect(x: 0, y: 0, width: 544, height: scrollViewHeight))
         memberOutputsView.wantsLayer = true
-        memberOutputsView.layer?.backgroundColor = RetroTheme.backgroundCard.cgColor
-        memberOutputsView.layer?.cornerRadius = 8
-        RetroTheme.applyNeonBorder(to: memberOutputsView.layer!, color: RetroTheme.sectionPositions.withAlphaComponent(0.3), width: 1)
-        panel.addSubview(memberOutputsView)
-        y -= 145
+        memberOutputsScrollView.documentView = memberOutputsView
+        panel.addSubview(memberOutputsScrollView)
+        y -= scrollViewHeight + 10
 
         // === INPUT SCALING SECTION ===
         let scaleHeader = RetroTheme.makeSectionHeader("◆ INPUT SCALING", color: RetroTheme.sectionScale, width: 560)
-        scaleHeader.frame = NSRect(x: 0, y: y, width: 560, height: 20)
+        scaleHeader.frame = NSRect(x: 0, y: y, width: 560, height: 18)
         panel.addSubview(scaleHeader)
-        y -= 25
+        y -= 22
 
         let scaleBox = makeInputScalingBox()
-        scaleBox.frame = NSRect(x: 0, y: y - 70, width: 560, height: 70)
+        scaleBox.frame = NSRect(x: 0, y: y - 65, width: 560, height: 65)
         panel.addSubview(scaleBox)
-        y -= 85
+        y -= 72
 
         // === EDGE BLENDING SECTION ===
         let blendHeader = RetroTheme.makeSectionHeader("◆ EDGE BLENDING", color: RetroTheme.sectionBlend, width: 560)
-        blendHeader.frame = NSRect(x: 0, y: y, width: 560, height: 20)
+        blendHeader.frame = NSRect(x: 0, y: y, width: 560, height: 18)
         panel.addSubview(blendHeader)
-        y -= 20
+        y -= 18
 
         let blendBox = makeEdgeBlendBox()
-        blendBox.frame = NSRect(x: 0, y: y - 200, width: 560, height: 200)
+        blendBox.frame = NSRect(x: 0, y: y - 195, width: 560, height: 195)
         panel.addSubview(blendBox)
-        y -= 215
+        y -= 205
 
         // === MASTER CONTROL SECTION ===
         let masterHeader = RetroTheme.makeSectionHeader("◆ MASTER CONTROL DMX", color: RetroTheme.neonMagenta, width: 560)
-        masterHeader.frame = NSRect(x: 0, y: y, width: 560, height: 20)
+        masterHeader.frame = NSRect(x: 0, y: y, width: 560, height: 18)
         panel.addSubview(masterHeader)
-        y -= 25
+        y -= 22
 
         let masterBox = makeMasterControlBox()
         masterBox.frame = NSRect(x: 0, y: y - 55, width: 560, height: 55)
@@ -2113,11 +2125,19 @@ class OutputSettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         // Get canvas height for output defaults
         let canvasH = Int(canvasHeightField?.stringValue ?? "1080") ?? 1080
 
+        // Calculate required height for all outputs (28px per row + padding)
+        let rowHeight: CGFloat = 28
+        let padding: CGFloat = 8
+        let requiredHeight = max(memberOutputsScrollView.bounds.height, CGFloat(outputs.count) * rowHeight + padding * 2)
+
+        // Resize document view to fit all outputs
+        memberOutputsView.frame = NSRect(x: 0, y: 0, width: 544, height: requiredHeight)
+
         // Calculate X positions based on cumulative output widths (for defaults)
         var xOffset = 0
-        var y: CGFloat = memberOutputsView.bounds.height - 8
+        var y: CGFloat = requiredHeight - padding
         for (i, output) in outputs.enumerated() {
-            y -= 28
+            y -= rowHeight
 
             // Use stored positions from config if available, otherwise calculate default
             let storedX = output.config.positionX
@@ -2191,8 +2211,74 @@ class OutputSettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         updateCanvasPreview()
         updateOverlapInfo()
 
+        // Check if this is a W or H field and sync to config panel
+        if let identifier = sender.identifier?.rawValue {
+            // Extract index from identifier like "pos_w_0" or "pos_h_2"
+            let parts = identifier.split(separator: "_")
+            if parts.count == 3, let index = Int(parts[2]) {
+                let fieldType = String(parts[1])  // "w" or "h"
+
+                if fieldType == "w" || fieldType == "h" {
+                    // If this output is currently selected, sync to config panel
+                    if index == selectedOutputIndex {
+                        let value = sender.stringValue
+                        if fieldType == "w" {
+                            outputWidthField.stringValue = value
+                            widthStepper.intValue = Int32(value) ?? 1920
+                        } else {
+                            outputHeightField.stringValue = value
+                            heightStepper.intValue = Int32(value) ?? 1080
+                        }
+                    }
+
+                    // Also update the actual output resolution
+                    if index < outputs.count {
+                        let output = outputs[index]
+                        let w = getFieldValue(index: index, field: "w") ?? Int(output.width)
+                        let h = getFieldValue(index: index, field: "h") ?? Int(output.height)
+
+                        if output.type == .NDI {
+                            OutputManager.shared.setNDIResolution(id: output.id, width: UInt32(w), height: UInt32(h))
+                        } else if output.type == .display {
+                            OutputManager.shared.setDisplayResolution(id: output.id, width: UInt32(w), height: UInt32(h))
+                        }
+                    }
+                }
+            }
+        }
+
         // Auto-save position changes
         autoSavePositions()
+    }
+
+    /// Get a field value from the position table by index and field type (x, y, w, h)
+    private func getFieldValue(index: Int, field: String) -> Int? {
+        for subview in memberOutputsView.subviews {
+            if subview.identifier?.rawValue == "output_row_\(index)" {
+                for child in subview.subviews {
+                    if let textField = child as? NSTextField,
+                       textField.identifier?.rawValue == "pos_\(field)_\(index)" {
+                        return Int(textField.stringValue)
+                    }
+                }
+            }
+        }
+        return nil
+    }
+
+    /// Update a field in the position table by index and field type
+    private func setFieldValue(index: Int, field: String, value: Int) {
+        for subview in memberOutputsView.subviews {
+            if subview.identifier?.rawValue == "output_row_\(index)" {
+                for child in subview.subviews {
+                    if let textField = child as? NSTextField,
+                       textField.identifier?.rawValue == "pos_\(field)_\(index)" {
+                        textField.stringValue = "\(value)"
+                        return
+                    }
+                }
+            }
+        }
     }
 
     @objc private func canvasSizeChanged(_ sender: NSTextField) {
@@ -3822,6 +3908,10 @@ class OutputSettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         widthStepper.doubleValue = Double(width)
         heightStepper.doubleValue = Double(height)
 
+        // Sync to position table (left panel)
+        setFieldValue(index: selectedOutputIndex, field: "w", value: Int(width))
+        setFieldValue(index: selectedOutputIndex, field: "h", value: Int(height))
+
         // Call appropriate method based on output type
         if output.type == .NDI {
             OutputManager.shared.setNDIResolution(id: output.id, width: width, height: height)
@@ -3837,8 +3927,9 @@ class OutputSettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
             NSLog("After setResolution: output reports %dx%d", updatedOutput.width, updatedOutput.height)
         }
 
-        // Don't call updateMemberOutputsList here - it would trigger another refresh
+        // Update canvas preview and save positions
         updateCanvasPreview()
+        autoSavePositions()
     }
 
     @objc private func widthStepperChanged(_ sender: NSStepper) {
@@ -3850,6 +3941,9 @@ class OutputSettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
 
         let height = UInt32(outputHeightField.stringValue) ?? 1080
 
+        // Sync to position table (left panel)
+        setFieldValue(index: selectedOutputIndex, field: "w", value: Int(width))
+
         // Call appropriate method based on output type
         if output.type == .NDI {
             OutputManager.shared.setNDIResolution(id: output.id, width: width, height: height)
@@ -3857,10 +3951,10 @@ class OutputSettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
             OutputManager.shared.setDisplayResolution(id: output.id, width: width, height: height)
         }
 
-        // Refresh to update member outputs list
+        // Refresh outputs and update preview
         outputs = OutputManager.shared.getAllOutputs()
-        updateMemberOutputsList()
         updateCanvasPreview()
+        autoSavePositions()
     }
 
     @objc private func heightStepperChanged(_ sender: NSStepper) {
@@ -3872,6 +3966,9 @@ class OutputSettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
 
         let width = UInt32(outputWidthField.stringValue) ?? 1920
 
+        // Sync to position table (left panel)
+        setFieldValue(index: selectedOutputIndex, field: "h", value: Int(height))
+
         // Call appropriate method based on output type
         if output.type == .NDI {
             OutputManager.shared.setNDIResolution(id: output.id, width: width, height: height)
@@ -3879,10 +3976,10 @@ class OutputSettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
             OutputManager.shared.setDisplayResolution(id: output.id, width: width, height: height)
         }
 
-        // Refresh to update member outputs list
+        // Refresh outputs and update preview
         outputs = OutputManager.shared.getAllOutputs()
-        updateMemberOutputsList()
         updateCanvasPreview()
+        autoSavePositions()
     }
 
     // MARK: - NSTextFieldDelegate

@@ -9901,7 +9901,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     @objc private func saveShowAs() {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.json]
-        panel.nameFieldStringValue = "Untitled.geodraw"
+        panel.nameFieldStringValue = currentShowPath?.lastPathComponent ?? "Untitled.geodraw"
         panel.title = "Save Show File"
 
         if panel.runModal() == .OK, let url = panel.url {

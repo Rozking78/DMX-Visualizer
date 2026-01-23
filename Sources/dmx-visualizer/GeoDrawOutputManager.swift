@@ -420,6 +420,10 @@ final class OutputManager: @unchecked Sendable {
         blend.gamma = config.edgeBlendGamma
         blend.power = config.edgeBlendPower
         blend.blackLevel = config.edgeBlendBlackLevel
+        blend.enableEdgeBlend = config.enableEdgeBlend
+        blend.enableWarp = config.enableWarp
+        blend.enableLensCorrection = config.enableLensCorrection
+        blend.enableCurveWarp = config.enableCurveWarp
         displayOutput.setEdgeBlend(blend)
 
         outputs[config.id] = output
@@ -740,6 +744,11 @@ final class OutputManager: @unchecked Sendable {
         blend.lensCenterY = output.config.lensCenterY
         // Preserve activeCorner overlay setting
         blend.activeCorner = output.activeCorner
+        // Apply shader toggle flags from config
+        blend.enableEdgeBlend = output.config.enableEdgeBlend
+        blend.enableWarp = output.config.enableWarp
+        blend.enableLensCorrection = output.config.enableLensCorrection
+        blend.enableCurveWarp = output.config.enableCurveWarp
 
         // Apply to the appropriate output type
         if output.type == .display, let displayOutput = output.displayOutput {
@@ -862,6 +871,10 @@ final class OutputManager: @unchecked Sendable {
         blend.lensCenterX = output.config.lensCenterX
         blend.lensCenterY = output.config.lensCenterY
         blend.activeCorner = corner
+        blend.enableEdgeBlend = output.config.enableEdgeBlend
+        blend.enableWarp = output.config.enableWarp
+        blend.enableLensCorrection = output.config.enableLensCorrection
+        blend.enableCurveWarp = output.config.enableCurveWarp
 
         if output.type == .display, let displayOutput = output.displayOutput {
             displayOutput.setEdgeBlend(blend)
@@ -953,6 +966,10 @@ final class OutputManager: @unchecked Sendable {
                 blend.lensK2 = config.lensK2
                 blend.lensCenterX = config.lensCenterX
                 blend.lensCenterY = config.lensCenterY
+                blend.enableEdgeBlend = config.enableEdgeBlend
+                blend.enableWarp = config.enableWarp
+                blend.enableLensCorrection = config.enableLensCorrection
+                blend.enableCurveWarp = config.enableCurveWarp
                 displayOutput.setEdgeBlend(blend)
 
                 output.displayOutput = displayOutput
@@ -1008,6 +1025,10 @@ final class OutputManager: @unchecked Sendable {
                 blend.lensK2 = config.lensK2
                 blend.lensCenterX = config.lensCenterX
                 blend.lensCenterY = config.lensCenterY
+                blend.enableEdgeBlend = config.enableEdgeBlend
+                blend.enableWarp = config.enableWarp
+                blend.enableLensCorrection = config.enableLensCorrection
+                blend.enableCurveWarp = config.enableCurveWarp
                 ndiOutput.setEdgeBlend(blend)
 
                 output.ndiOutput = ndiOutput
@@ -1137,6 +1158,10 @@ final class OutputManager: @unchecked Sendable {
                 blend.lensK2 = config.lensK2
                 blend.lensCenterX = config.lensCenterX
                 blend.lensCenterY = config.lensCenterY
+                blend.enableEdgeBlend = config.enableEdgeBlend
+                blend.enableWarp = config.enableWarp
+                blend.enableLensCorrection = config.enableLensCorrection
+                blend.enableCurveWarp = config.enableCurveWarp
                 displayOutput.setEdgeBlend(blend)
 
                 output.displayOutput = displayOutput
@@ -1191,6 +1216,10 @@ final class OutputManager: @unchecked Sendable {
                 blend.lensK2 = config.lensK2
                 blend.lensCenterX = config.lensCenterX
                 blend.lensCenterY = config.lensCenterY
+                blend.enableEdgeBlend = config.enableEdgeBlend
+                blend.enableWarp = config.enableWarp
+                blend.enableLensCorrection = config.enableLensCorrection
+                blend.enableCurveWarp = config.enableCurveWarp
                 ndiOutput.setEdgeBlend(blend)
 
                 output.ndiOutput = ndiOutput
